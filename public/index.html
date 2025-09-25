@@ -1,32 +1,266 @@
-<!doctype html>
-<html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
-	</head>
-	<body>
-		<h1 id="heading"></h1>
-		<p>This page comes from a static asset stored at `public/index.html` as configured in `wrangler.jsonc`.</p>
-		<button id="button" type="button">Fetch a random UUID</button>
-		<output id="random" for="button"></output>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="page.title">Suite Empresarial - Tu Negocio, Simplificado</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(37,99,235)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='7' width='20' height='15' rx='2' ry='2'></rect><path d='M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16'></path></svg>" type="image/svg+xml">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+    
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
 
-			const button = document.getElementById("button");
-			button.addEventListener("click", () => {
-				fetch('/random')
-					.then((resp) => resp.text())
-					.then((text) => {
-						const random = document.getElementById('random');
-						random.textContent = text;
-					});
-			});
-		</script>
-	</body>
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-md transition-colors">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center">
+                <i data-feather="briefcase" class="h-8 w-8 text-blue-600"></i>
+                <h1 class="text-xl font-bold ml-2">Suite Empresarial</h1>
+            </div>
+            
+            <nav class="hidden absolute top-full left-0 right-0 bg-white dark:bg-gray-800 shadow-lg md:shadow-none md:static md:flex md:items-center md:bg-transparent dark:md:bg-transparent">
+                <div class="flex flex-col md:flex-row md:space-x-6">
+                    <a href="#modulos" class="block py-3 px-6 hover:bg-gray-100 dark:hover:bg-gray-700 md:p-0 md:hover:bg-transparent md:hover:text-blue-600" data-i18n="header.modules"></a>
+                    <a href="#precios" class="block py-3 px-6 hover:bg-gray-100 dark:hover:bg-gray-700 md:p-0 md:hover:bg-transparent md:hover:text-blue-600" data-i18n="header.plans"></a>
+                    <a href="#nosotros" class="block py-3 px-6 hover:bg-gray-100 dark:hover:bg-gray-700 md:p-0 md:hover:bg-transparent md:hover:text-blue-600" data-i18n="header.about"></a>
+                    <a href="#contacto" class="block py-3 px-6 hover:bg-gray-100 dark:hover:bg-gray-700 md:p-0 md:hover:bg-transparent md:hover:text-blue-600" data-i18n="header.contact"></a>
+                </div>
+            </nav>
+
+            <div class="flex items-center gap-4">
+                <a href="./plan gratis/inicio.html" class="hidden md:block border border-blue-600 text-blue-600 font-semibold py-2 px-4 rounded-lg shadow hover:bg-blue-50 dark:text-white dark:hover:bg-gray-700 transition-colors" data-i18n="header.try_free">
+                </a>
+                <a href="./login.html" class="cta-button hidden md:block" data-i18n="header.login">
+                </a>
+                
+                <div class="relative">
+                    <select id="language-switcher" class="text-sm bg-gray-200 dark:bg-gray-700 border-none rounded-md py-2 px-4 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="es">Español</option>
+                        <option value="en">English</option>
+                        <option value="fr">Français</option>
+                        <option value="pt">Português</option>
+                    </select>
+                </div>
+
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i data-feather="sun" class="h-5 w-5 block dark:hidden"></i>
+                    <i data-feather="moon" class="h-5 w-5 hidden dark:block"></i>
+                </button>
+                <button id="mobile-menu-button" class="md:hidden p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i data-feather="menu"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="pt-32 pb-20 text-center bg-white dark:bg-gray-800">
+            <div class="container mx-auto px-6">
+                <h2 class="text-4xl md:text-6xl font-extrabold mb-4 text-gray-900 dark:text-white" data-i18n="hero.title" data-aos="fade-down"></h2>
+                <p class="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto" data-aos="fade-down" data-aos-delay="200">
+                    <span id="typed-subtitle"></span>
+                </p>
+                <a href="#precios" class="cta-button" data-i18n="hero.view_plans" data-aos="fade-up" data-aos-delay="400">
+                </a>
+            </div>
+        </section>
+
+        <section id="modulos" class="py-20">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12" data-aos="fade-up">
+                    <span class="text-blue-600 font-semibold" data-i18n="modules.tagline"></span>
+                    <h3 class="text-3xl font-bold mt-2" data-i18n="modules.title"></h3>
+                    <p class="text-gray-500 mt-2 max-w-2xl mx-auto" data-i18n="modules.subtitle"></p>
+                </div>
+                <div class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up">
+                        <i data-feather="file-text" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.billing.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.billing.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="50">
+                        <i data-feather="trending-up" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.collections.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.collections.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="100">
+                        <i data-feather="shopping-cart" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.purchases.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.purchases.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="150">
+                         <i data-feather="activity" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.treasury.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.treasury.desc"></p>
+                    </div>
+                     <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="200">
+                        <i data-feather="dollar-sign" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.payroll.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.payroll.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="250">
+                        <i data-feather="users" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.hr.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.hr.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="300">
+                        <i data-feather="target" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.crm.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.crm.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="350">
+                        <i data-feather="shopping-bag" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.pos.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.pos.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="400">
+                        <i data-feather="archive" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.inventory.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.inventory.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="450">
+                        <i data-feather="shield" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.ohs.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.ohs.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="500">
+                        <i data-feather="phone-call" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.callcenter.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.callcenter.desc"></p>
+                    </div>
+                    <div class="feature-card interactive-card bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md text-center" data-aos="fade-up" data-aos-delay="550">
+                        <i data-feather="pie-chart" class="h-12 w-12 text-blue-600 mx-auto mb-4"></i>
+                        <h4 class="text-xl font-semibold mb-2" data-i18n="modules.reports.title"></h4>
+                        <p class="text-gray-600 dark:text-gray-400" data-i18n="modules.reports.desc"></p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="precios" class="py-20 bg-white dark:bg-gray-800">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12" data-aos="fade-up">
+                    <span class="text-blue-600 font-semibold" data-i18n="plans.tagline"></span>
+                    <h3 class="text-3xl font-bold mt-2" data-i18n="plans.title"></h3>
+                    <p class="text-gray-500 mt-2" data-i18n="plans.subtitle"></p>
+                </div>
+                <div class="flex flex-wrap justify-center gap-8">
+                    <div class="pricing-card border border-gray-200 dark:border-gray-700 p-8 rounded-lg text-center flex flex-col h-full w-full max-w-sm" data-aos="fade-up-right">
+                        <h4 class="text-2xl font-semibold mb-2" data-i18n="plans.starter.title"></h4>
+                        <p class="text-5xl font-bold mb-4">$0<span class="text-lg font-normal text-gray-500" data-i18n="plans.starter.price_suffix"></span></p>
+                        <p class="text-gray-600 dark:text-gray-400 mb-6" data-i18n="plans.starter.description"></p>
+                        <ul class="text-gray-600 dark:text-gray-400 space-y-3 text-left flex-grow">
+                            <li class="flex items-center" data-i18n="plans.starter.feature1"></li>
+                            <li class="flex items-center" data-i18n="plans.starter.feature2"></li>
+                            <li class="flex items-center" data-i18n="plans.starter.feature3"></li>
+                            <li class="flex items-center" data-i18n="plans.starter.feature4"></li>
+                            <li class="flex items-center" data-i18n="plans.starter.feature5"></li>
+                        </ul>
+                        <a href="./plan gratis/inicio.html" class="mt-8 block bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold py-3 px-8 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors" data-i18n="plans.starter.cta">
+                        </a>
+                    </div>
+                    <div class="pricing-card border-2 border-blue-600 p-8 rounded-lg text-center relative flex flex-col h-full w-full max-w-sm" data-aos="fade-up-left">
+                        <span class="absolute top-0 -translate-y-1/2 bg-blue-600 text-white text-sm font-semibold px-3 py-1 rounded-full" data-i18n="plans.professional.badge"></span>
+                        <h4 class="text-2xl font-semibold mb-2" data-i18n="plans.professional.title"></h4>
+                        <p class="text-5xl font-bold mb-4" data-i18n="plans.professional.price"></p>
+                        <p class="text-gray-600 dark:text-gray-400 mb-6" data-i18n="plans.professional.description"></p>
+                        <ul class="text-gray-600 dark:text-gray-400 space-y-3 text-left flex-grow">
+                            <li class="flex items-center" data-i18n="plans.professional.feature1"></li>
+                            <li class="flex items-center" data-i18n="plans.professional.feature2"></li>
+                            <li class="flex items-center" data-i18n="plans.professional.feature3"></li>
+                            <li class="flex items-center" data-i18n="plans.professional.feature4"></li>
+                            <li class="flex items-center" data-i18n="plans.professional.feature5"></li>
+                        </ul>
+                        <a href="https://wa.me/573001234567?text=Hola,%20estoy%20interesado%20en%20el%20Plan%20Profesional%20de%20Suite%20Empresarial." target="_blank" class="cta-button mt-8 block w-full" data-i18n="plans.professional.cta">
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="nosotros" class="py-20">
+            <div class="container mx-auto px-6 text-center" data-aos="fade-up">
+                 <span class="text-blue-600 font-semibold" data-i18n="about.tagline"></span>
+                <h3 class="text-3xl font-bold mt-2 mb-4" data-i18n="about.title"></h3>
+                <p class="max-w-3xl mx-auto text-gray-600 dark:text-gray-400" data-i18n="about.description"></p>
+            </div>
+        </section>
+
+        <section id="contacto" class="py-20 bg-white dark:bg-gray-800">
+            <div class="container mx-auto px-6 text-center" data-aos="fade-up">
+                <span class="text-blue-600 font-semibold" data-i18n="contact.tagline"></span>
+                <h3 class="text-3xl font-bold mt-2 mb-4" data-i18n="contact.title"></h3>
+                <p class="text-gray-500 mb-8" data-i18n="contact.subtitle"></p>
+                <div class="max-w-xl mx-auto text-left">
+                     <a href="https://wa.me/573001234567?text=Hola,%20quisiera%20más%20información%20sobre%20Suite%20Empresarial." target="_blank" class="w-full mb-6 bg-green-500 text-white font-semibold py-3 px-8 rounded-lg shadow-lg hover:bg-green-600 transition-colors flex items-center justify-center" data-i18n="contact.whatsapp_cta">
+                    </a>
+                    <p class="text-center text-gray-500 mb-6" data-i18n="contact.form_intro"></p>
+                    <form>
+                        <div class="mb-4">
+                            <label for="name" class="block text-sm font-medium mb-1" data-i18n="contact.form.name"></label>
+                            <input type="text" id="name" name="name" class="w-full border rounded-md p-2 dark:bg-gray-700">
+                        </div>
+                        <div class="mb-4">
+                            <label for="email" class="block text-sm font-medium mb-1" data-i18n="contact.form.email"></label>
+                            <input type="email" id="email" name="email" class="w-full border rounded-md p-2 dark:bg-gray-700">
+                        </div>
+                        <div class="mb-4">
+                            <label for="message" class="block text-sm font-medium mb-1" data-i18n="contact.form.message"></label>
+                            <textarea id="message" name="message" rows="4" class="w-full border rounded-md p-2 dark:bg-gray-700"></textarea>
+                        </div>
+                        <button type="submit" class="cta-button w-full" data-i18n="contact.form.submit">
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white pt-12 pb-8">
+        <div class="container mx-auto px-6">
+            <div class="grid md:grid-cols-4 gap-8">
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center mb-4">
+                        <i data-feather="briefcase" class="h-10 w-10 text-blue-500"></i>
+                        <h4 class="text-2xl font-bold ml-3">Suite Empresarial</h4>
+                    </div>
+                    <p class="text-gray-400" data-i18n="footer.description"></p>
+                </div>
+                <div>
+                    <h5 class="font-semibold mb-4" data-i18n="footer.navigation.title"></h5>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#modulos" class="hover:text-white" data-i18n="footer.navigation.modules"></a></li>
+                        <li><a href="#precios" class="hover:text-white" data-i18n="footer.navigation.plans"></a></li>
+                        <li><a href="#nosotros" class="hover:text-white" data-i18n="footer.navigation.about"></a></li>
+                        <li><a href="#contacto" class="hover:text-white" data-i18n="footer.navigation.contact"></a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h5 class="font-semibold mb-4" data-i18n="footer.follow.title"></h5>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white" title="Facebook"><i data-feather="facebook"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white" title="Instagram"><i data-feather="instagram"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white" title="LinkedIn"><i data-feather="linkedin"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 border-t border-gray-700 pt-6 text-center text-gray-500">
+                <p data-i18n="footer.copyright"></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="https://unpkg.com/typed.js@2.0.16/dist/typed.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
+    <script src="script.js"></script>
+</body>
 </html>

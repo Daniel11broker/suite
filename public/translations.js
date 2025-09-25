@@ -1,0 +1,62 @@
+export const translations = {
+    es: {
+        pageTitle: "Ingreso - Suite Empresarial",
+        goBackButton: "Volver",
+        loginTitle: "Iniciar Sesión SuperAdmin",
+        loginSubtitle: "Usa tu usuario y contraseña",
+        usernamePlaceholder: "Usuario",
+        passwordPlaceholder: "Contraseña",
+        forgotPasswordLink: "¿Olvidaste tu contraseña?",
+        loginButton: "Iniciar Sesión",
+        welcomeTitle: "Bienvenido de Nuevo",
+        welcomeText: "Ingresa tus datos para acceder a tu panel de control y seguir gestionando tu empresa.",
+        inactiveAccountError: "Tu cuenta está desactivada. Por favor, contacta a tu administrador.",
+        inactiveAccountShortError: "Cuenta inactiva.",
+        wrongCredentialsError: "Usuario o contraseña incorrectos."
+    },
+    en: {
+        pageTitle: "Login - Business Suite",
+        goBackButton: "Back",
+        loginTitle: "SuperAdmin Login",
+        loginSubtitle: "Use your username and password",
+        usernamePlaceholder: "Username",
+        passwordPlaceholder: "Password",
+        forgotPasswordLink: "Forgot your password?",
+        loginButton: "Sign In",
+        welcomeTitle: "Welcome Back",
+        welcomeText: "Enter your details to access your dashboard and continue managing your business.",
+        inactiveAccountError: "Your account is disabled. Please contact your administrator.",
+        inactiveAccountShortError: "Inactive account.",
+        wrongCredentialsError: "Incorrect username or password."
+    },
+    fr: {
+        pageTitle: "Connexion - Suite d'Entreprise",
+        goBackButton: "Retour",
+        loginTitle: "Connexion SuperAdmin",
+        loginSubtitle: "Utilisez votre nom d'utilisateur et votre mot de passe",
+        usernamePlaceholder: "Nom d'utilisateur",
+        passwordPlaceholder: "Mot de passe",
+        forgotPasswordLink: "Mot de passe oublié ?",
+        loginButton: "Se connecter",
+        welcomeTitle: "Content de vous revoir",
+        welcomeText: "Saisissez vos informations pour accéder à votre tableau de bord et continuer à gérer votre entreprise.",
+        inactiveAccountError: "Votre compte est désactivé. Veuillez contacter votre administrateur.",
+        inactiveAccountShortError: "Compte inactif.",
+        wrongCredentialsError: "Nom d'utilisateur ou mot de passe incorrect."
+    },
+    pt: {
+        pageTitle: "Login - Suite Empresarial",
+        goBackButton: "Voltar",
+        loginTitle: "Login de SuperAdmin",
+        loginSubtitle: "Use seu usuário e senha",
+        usernamePlaceholder: "Usuário",
+        passwordPlaceholder: "Senha",
+        forgotPasswordLink: "Esqueceu sua senha?",
+        loginButton: "Entrar",
+        welcomeTitle: "Bem-vindo de Volta",
+        welcomeText: "Insira seus dados para acessar seu painel de controle e continuar gerenciando sua empresa.",
+        inactiveAccountError: "Sua conta está desativada. Por favor, entre em contato com seu administrador.",
+        inactiveAccountShortError: "Conta inativa.",
+        wrongCredentialsError: "Usuário ou senha incorretos."
+    }
+};

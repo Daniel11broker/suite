@@ -1,0 +1,66 @@
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* --- Estilos para Botones y Enlaces Mejorados --- */
+.cta-button {
+    display: inline-block;
+    font-weight: 600;
+    padding: 0.75rem 2rem;
+    border-radius: 0.5rem;
+    color: white;
+    background-image: linear-gradient(45deg, #3b82f6, #60a5fa);
+    background-size: 200% auto;
+    box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: none;
+    cursor: pointer;
+}
+
+.cta-button:hover {
+    background-position: right center; /* Cambia la dirección del gradiente */
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+/* Efecto para enlaces de navegación */
+header nav a {
+    position: relative;
+    transition: color 0.3s;
+}
+
+header nav a::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 2px;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #3b82f6;
+    transition: width 0.3s ease-out;
+}
+
+header nav a:hover::after {
+    width: 100%;
+}
+
+
+/* --- Tarjetas Interactivas con Efecto Parallax --- */
+.interactive-card {
+    transition: transform 0.3s, box-shadow 0.3s;
+    will-change: transform; /* Optimización para el rendimiento */
+}
+
+/* --- Subtítulo con cursor de escritura --- */
+#typed-subtitle::after {
+    content: '|';
+    display: inline-block;
+    animation: blink 0.7s infinite;
+    color: #3b82f6;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}

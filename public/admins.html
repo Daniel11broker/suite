@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administrador - Suite Empresarial</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(37,99,235)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='7' width='20' height='15' rx='2' ry='2'></rect><path d='M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16'></path></svg>" type="image/svg+xml">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="plan gratis/main.css">
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+
+    <nav id="sidebar" class="fixed top-0 left-0 h-full bg-white dark:bg-gray-800 shadow-lg z-50 flex flex-col transition-all overflow-hidden">
+        <div class="flex items-center justify-center h-16 border-b dark:border-gray-700 flex-shrink-0 px-4">
+            <a href="#" class="flex items-center space-x-3">
+                <i data-feather="briefcase" class="h-8 w-8 text-blue-600 flex-shrink-0"></i>
+                <span class="sidebar-text text-xl font-bold text-gray-800 dark:text-white">Suite Empresarial</span>
+            </a>
+        </div>
+        <div class="flex-grow overflow-y-auto overflow-x-hidden">
+            <div class="flex flex-col py-4 space-y-1">
+                 <a href="./admins.html" class="flex items-center h-12 px-6 text-blue-600 bg-blue-50 dark:bg-gray-700 dark:text-blue-300 font-semibold" title="Gestión de Usuarios">
+                    <i data-feather="users" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Usuarios</span>
+                </a>
+                </div>
+        </div>
+         <div class="flex-shrink-0 p-4 border-t dark:border-gray-700">
+             <button id="logout-btn" class="w-full flex items-center justify-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Cerrar Sesión">
+                <i data-feather="log-out" class="h-6 w-6 flex-shrink-0"></i>
+                <span class="sidebar-text">Cerrar Sesión</span>
+            </button>
+        </div>
+    </nav>
+
+    <button id="mobile-menu-button" class="md:hidden fixed top-4 left-4 z-[60] p-2 bg-white dark:bg-gray-800 rounded-full shadow-md"><i data-feather="menu"></i></button>
+
+    <div id="main-content-wrapper">
+        <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+            <header class="mb-8 text-center relative">
+                <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">Panel de Administrador</h1>
+                <p class="text-gray-600 dark:text-gray-400 mt-2">Gestiona los usuarios de tu equipo.</p>
+                 <div class="absolute top-0 right-0 flex items-center h-full">
+                    <button id="theme-toggle" title="Cambiar Tema"><div id="theme-toggle-circle"></div></button>
+                </div>
+            </header>
+
+            <div id="user-limit-widget" class="mb-6 bg-white dark:bg-gray-800 p-4 rounded-lg shadow flex justify-center items-center gap-4 max-w-sm mx-auto">
+                <i data-feather="users" class="h-8 w-8 text-blue-500"></i>
+                <div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Usuarios Creados</p>
+                    <p id="user-count-text" class="text-xl font-bold">0 / 0</p>
+                </div>
+            </div>
+
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8 max-w-2xl mx-auto">
+                <h2 class="text-xl font-semibold mb-4 border-b pb-2 dark:border-gray-700">Crear o Editar Usuario</h2>
+                <form id="user-form" class="space-y-4">
+                    <input type="hidden" id="user-id">
+                    <div>
+                        <label for="username" class="block text-sm font-medium mb-1">Nombre de Usuario</label>
+                        <input type="text" id="username" class="w-full border rounded-md p-2 dark:bg-gray-700 dark:border-gray-600" required>
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium mb-1">Contraseña</label>
+                        <input type="password" id="password" class="w-full border rounded-md p-2 dark:bg-gray-700 dark:border-gray-600" placeholder="Dejar en blanco para no cambiar">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="role" class="block text-sm font-medium mb-1">Rol</label>
+                            <select id="role" class="w-full border rounded-md p-2 dark:bg-gray-700 dark:border-gray-600">
+                                <option value="editar">Editar (Acceso completo)</option>
+                                <option value="lectura">Lectura (Solo ver)</option>
+                            </select>
+                        </div>
+                        <div>
+                           <label for="status" class="block text-sm font-medium mb-1">Estado de la Cuenta</label>
+                            <select id="status" class="w-full border rounded-md p-2 dark:bg-gray-700 dark:border-gray-600">
+                                <option value="Activo">Activo</option>
+                                <option value="Inactivo">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 pt-4">
+                        <button type="button" id="cancel-edit-btn" class="bg-gray-200 dark:bg-gray-600 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 hidden">Cancelar</button>
+                        <button type="submit" id="save-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">Crear Usuario</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
+                <h2 class="text-xl font-semibold p-6 border-b dark:border-gray-700">Usuarios Existentes</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full table-auto">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase">Nombre de Usuario</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase">Rol</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium uppercase">Estado</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium uppercase">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body" class="divide-y divide-gray-200 dark:divide-gray-700"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="toast-container" class="fixed top-20 right-5 z-[1001]"></div>
+    <script src="admins.js" type="module"></script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suite Empresarial - Inicio</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(37,99,235)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='7' width='20' height='15' rx='2' ry='2'></rect><path d='M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16'></path></svg>" type="image/svg+xml">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="main.css">
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
+
+    <nav id="sidebar" class="fixed top-0 left-0 h-full bg-white dark:bg-gray-800 shadow-lg z-50 flex flex-col transition-all overflow-hidden">
+        <div class="flex items-center justify-center h-16 border-b dark:border-gray-700 flex-shrink-0 px-4">
+            <a href="./inicio.html" class="flex items-center space-x-3">
+                <i data-feather="briefcase" class="h-8 w-8 text-blue-600 flex-shrink-0"></i>
+                <span class="sidebar-text text-xl font-bold text-gray-800 dark:text-white">Suite Empresarial</span>
+            </a>
+        </div>
+
+        <div class="flex-grow overflow-y-auto overflow-x-hidden">
+            <div class="flex flex-col py-4 space-y-1">
+                <a href="./inicio.html" class="flex items-center h-12 px-6 text-blue-600 bg-blue-50 dark:bg-gray-700 dark:text-blue-300 font-semibold" title="Inicio">
+                    <i data-feather="home" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Inicio</span>
+                </a>
+                <a href="./resportes.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Reportes y Analítica">
+                    <i data-feather="pie-chart" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Reportes</span>
+                </a>
+                <a href="./tesoreria.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Tesorería">
+                    <i data-feather="activity" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Tesorería</span>
+                </a>
+                <a href="./facturacion.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Facturación">
+                    <i data-feather="file-text" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Facturación</span>
+                </a>
+                <a href="./recursoshumanos.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Talento Humano">
+                    <i data-feather="users" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">RRHH</span>
+                </a>
+                <a href="./crm.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="CRM y Ventas">
+                    <i data-feather="target" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">CRM</span>
+                </a>
+                <a href="./compras.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Compras">
+                    <i data-feather="shopping-cart" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Compras</span>
+                </a>
+                <a href="./nomina.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Nómina">
+                    <i data-feather="dollar-sign" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Nómina</span>
+                </a>
+                <a href="./cobranza.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Cobranza">
+                    <i data-feather="trending-up" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Cobranza</span>
+                </a>
+                <a href="./sg-sst.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="SG-SST">
+                    <i data-feather="shield" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">SG-SST</span>
+                </a>
+                <a href="./inventarios.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Inventarios">
+                    <i data-feather="archive" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Inventarios</span>
+                </a>
+                <a href="./call-center.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Call Center">
+                    <i data-feather="phone" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Call Center</span>
+                </a>
+                <a href="./pos.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Punto de Venta"><i data-feather="shopping-bag" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Punto de Venta</span></a>
+            </div>
+        </div>
+    </nav>
+    
+    <button id="mobile-menu-button" class="md:hidden fixed top-4 left-4 z-[60] p-2 bg-white dark:bg-gray-800 rounded-full shadow-md">
+        <i data-feather="menu"></i>
+    </button>
+
+    <div id="main-content-wrapper">
+        <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+            <header class="mb-8 text-center relative">
+                <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">Bienvenido a Suite Empresarial</h1>
+                <p class="text-gray-600 dark:text-gray-400 mt-2">Selecciona un módulo para comenzar a gestionar tu negocio de forma eficiente.</p>
+                <div class="absolute top-0 right-0 flex items-center h-full pr-4">
+                    <button id="theme-toggle" title="Cambiar Tema">
+                        <div id="theme-toggle-circle"></div>
+                    </button>
+                </div>
+            </header>
+
+            <main>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    
+                    <a href="./call-center.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="phone" class="h-10 w-10 mb-4 text-blue-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Call Center</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Gestiona llamadas, agentes y tareas de tu centro de atención.</p>
+                    </a>
+                    
+                    <a href="./facturacion.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="file-text" class="h-10 w-10 mb-4 text-green-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Facturación</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Crea, envía y gestiona facturas electrónicas fácilmente.</p>
+                    </a>
+
+                    <a href="./crm.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="target" class="h-10 w-10 mb-4 text-red-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">CRM y Ventas</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Administra tus clientes y potencia tu embudo de ventas.</p>
+                    </a>
+
+                    <a href="./pos.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="shopping-bag" class="h-10 w-10 mb-4 text-teal-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Punto de Venta (POS)</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Gestiona ventas directas al cliente de forma ágil.</p>
+                    </a>
+
+                    <a href="./recursoshumanos.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="users" class="h-10 w-10 mb-4 text-purple-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Talento Humano</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Gestiona empleados, contratos y desempeño del personal.</p>
+                    </a>
+
+                    <a href="./inventarios.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="archive" class="h-10 w-10 mb-4 text-yellow-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Inventarios</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Controla tu stock, almacenes y optimiza tus niveles.</p>
+                    </a>
+                    
+                    <a href="./tesoreria.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="activity" class="h-10 w-10 mb-4 text-indigo-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Tesorería</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Administra el flujo de caja, bancos y conciliaciones.</p>
+                    </a>
+
+                    <a href="./resportes.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="pie-chart" class="h-10 w-10 mb-4 text-cyan-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Reportes y Analítica</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Visualiza datos clave y toma decisiones informadas.</p>
+                    </a>
+
+                    <a href="./compras.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="shopping-cart" class="h-10 w-10 mb-4 text-orange-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Compras</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Gestiona proveedores y órdenes de compra eficientemente.</p>
+                    </a>
+
+                    <a href="./nomina.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="dollar-sign" class="h-10 w-10 mb-4 text-pink-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Nómina</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Automatiza la liquidación y pago de la nómina.</p>
+                    </a>
+
+                    <a href="./cobranza.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="trending-up" class="h-10 w-10 mb-4 text-lime-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Cobranza</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Lleva un control detallado de tus cuentas por cobrar.</p>
+                    </a>
+
+                    <a href="./sg-sst.html" class="kpi-card flex flex-col items-center justify-center p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md text-center transition-all">
+                        <i data-feather="shield" class="h-10 w-10 mb-4 text-sky-500"></i>
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">SG-SST</h3>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Gestiona el Sistema de Seguridad y Salud en el Trabajo.</p>
+                    </a>
+
+                    </div>
+            </main>
+        </div>
+    </div>
+    <script src="inicio.js"></script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="pageTitle">Ingreso - Suite Empresarial</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(37,99,235)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='7' width='20' height='15' rx='2' ry='2'></rect><path d='M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16'></path></svg>" type="image/svg+xml">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="login.css">
+    
+    <script>
+        tailwind.config = { darkMode: 'class' }
+    </script>
+</head>
+<body>
+
+    <div class="fixed top-4 left-4 z-20 flex items-center gap-4">
+        <a href="index.html" class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-800 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg shadow hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center">
+            <i data-feather="arrow-left" class="mr-2 h-5 w-5"></i> <span data-translate="goBackButton">Volver</span>
+        </a>
+        <button id="theme-toggle" class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-2 rounded-full shadow hover:bg-gray-200 dark:hover:bg-gray-700">
+            <i data-feather="sun" class="h-5 w-5 block dark:hidden"></i>
+            <i data-feather="moon" class="h-5 w-5 hidden dark:block"></i>
+        </button>
+        <div class="relative">
+            <select id="language-selector" class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm text-gray-800 dark:text-gray-200 font-semibold py-2 px-4 rounded-lg shadow appearance-none">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="pt">Português</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="container" id="container">
+        <div class="form-container">
+            <form id="login-form" class="w-full px-10">
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white" data-translate="loginTitle">Iniciar Sesión SuperAdmin</h1>
+                <span class="text-gray-600 dark:text-gray-400 my-3" data-translate="loginSubtitle">Usa tu usuario y contraseña</span>
+                <input type="text" id="login-username" placeholder="Usuario" data-translate-placeholder="usernamePlaceholder" required>
+                <input type="password" id="login-password" placeholder="Contraseña" data-translate-placeholder="passwordPlaceholder" required>
+                <a href="#" class="text-sm text-gray-500 hover:text-blue-600 my-3" data-translate="forgotPasswordLink">¿Olvidaste tu contraseña?</a>
+                <button type="submit" data-translate="loginButton">Iniciar Sesión</button>
+                <p id="login-error" class="error-message"></p>
+            </form>
+        </div>
+
+        <div class="toggle-container">
+            <div class="toggle-panel">
+                <i data-feather="briefcase" class="h-16 w-16 mb-4"></i>
+                <h1 class="text-3xl font-bold" data-translate="welcomeTitle">Bienvenido de Nuevo</h1>
+                <p class="my-4" data-translate="welcomeText">Ingresa tus datos para acceder a tu panel de control y seguir gestionando tu empresa.</p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="translations.js" type="module"></script>
+    <script src="login.js" type="module"></script>
+</body>
+</html>
+
+
+
+
