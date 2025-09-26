@@ -39,7 +39,17 @@
 			"id": "4a5d3afae3c7446f95218f5954465e7b",
 			"preview_id": "71e818ca7d614d46adbe80195a1ba010"
 		}
-	]
+	],
+	"durable_objects": {
+        "bindings": [
+            { "name": "CHAT_LOBBY", "class_name": "ChatLobby" },
+            { "name": "CHAT_SESSION", "class_name": "ChatSession" }
+        ]
+    },
+    "migrations": [
+      { "tag": "v1", "new_classes": ["ChatLobby", "ChatSession"] }
+    ]
+
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

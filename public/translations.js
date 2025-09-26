@@ -12,7 +12,9 @@ export const translations = {
         welcomeText: "Ingresa tus datos para acceder a tu panel de control y seguir gestionando tu empresa.",
         inactiveAccountError: "Tu cuenta está desactivada. Por favor, contacta a tu administrador.",
         inactiveAccountShortError: "Cuenta inactiva.",
-        wrongCredentialsError: "Usuario o contraseña incorrectos."
+        wrongCredentialsError: "Usuario o contraseña incorrectos.",
+        support_chat: { "title": "Soporte y Ventas", "prompt": "Selecciona un departamento e ingresa tu nombre para iniciar.", "username_placeholder": "Tu nombre", "department_sales": "Ventas", "department_support": "Soporte", "connect_button": "Iniciar Chat", "message_placeholder": "Escribe un mensaje..." },
+        ai_chat: { "title": "Asistente Virtual", "input_placeholder": "Pregúntale a la IA..." }
     },
     en: {
         pageTitle: "Login - Business Suite",
@@ -27,7 +29,9 @@ export const translations = {
         welcomeText: "Enter your details to access your dashboard and continue managing your business.",
         inactiveAccountError: "Your account is disabled. Please contact your administrator.",
         inactiveAccountShortError: "Inactive account.",
-        wrongCredentialsError: "Incorrect username or password."
+        wrongCredentialsError: "Incorrect username or password.",
+        support_chat: { "title": "Support & Sales", "prompt": "Select a department and enter your name to begin.", "username_placeholder": "Your name", "department_sales": "Sales", "department_support": "Support", "connect_button": "Start Chat", "message_placeholder": "Type a message..." },
+        ai_chat: { "title": "Virtual Assistant", "input_placeholder": "Ask the AI..." }
     },
     fr: {
         pageTitle: "Connexion - Suite d'Entreprise",
@@ -42,7 +46,9 @@ export const translations = {
         welcomeText: "Saisissez vos informations pour accéder à votre tableau de bord et continuer à gérer votre entreprise.",
         inactiveAccountError: "Votre compte est désactivé. Veuillez contacter votre administrateur.",
         inactiveAccountShortError: "Compte inactif.",
-        wrongCredentialsError: "Nom d'utilisateur ou mot de passe incorrect."
+        wrongCredentialsError: "Nom d'utilisateur ou mot de passe incorrect.",
+        support_chat: { "title": "Support & Ventes", "prompt": "Sélectionnez un département et entrez votre nom pour commencer.", "username_placeholder": "Votre nom", "department_sales": "Ventes", "department_support": "Support", "connect_button": "Démarrer le Chat", "message_placeholder": "Écrivez un message..." },
+        ai_chat: { "title": "Assistant Virtuel", "input_placeholder": "Demandez à l'IA..." }
     },
     pt: {
         pageTitle: "Login - Suite Empresarial",
@@ -57,6 +63,8 @@ export const translations = {
         welcomeText: "Insira seus dados para acessar seu painel de controle e continuar gerenciando sua empresa.",
         inactiveAccountError: "Sua conta está desativada. Por favor, entre em contato com seu administrador.",
         inactiveAccountShortError: "Conta inativa.",
-        wrongCredentialsError: "Usuário ou senha incorretos."
+        wrongCredentialsError: "Usuário ou senha incorretos.",
+        support_chat: { "title": "Suporte e Vendas", "prompt": "Selecione um departamento e digite seu nome para iniciar.", "username_placeholder": "Seu nome", "department_sales": "Vendas", "department_support": "Suporte", "connect_button": "Iniciar Bate-papo", "message_placeholder": "Digite uma mensagem..." },
+        ai_chat: { "title": "Assistente Virtual", "input_placeholder": "Pergunte à IA..." }
     }
 };

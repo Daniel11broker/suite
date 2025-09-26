@@ -8,11 +8,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
-    
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-    
     <link rel="stylesheet" href="style.css">
-    
     <script>
         tailwind.config = { darkMode: 'class' }
     </script>
@@ -25,7 +22,6 @@
                 <i data-feather="briefcase" class="h-8 w-8 text-blue-600"></i>
                 <h1 class="text-xl font-bold ml-2">Suite Empresarial</h1>
             </div>
-            
             <nav class="hidden absolute top-full left-0 right-0 bg-white dark:bg-gray-800 shadow-lg md:shadow-none md:static md:flex md:items-center md:bg-transparent dark:md:bg-transparent">
                 <div class="flex flex-col md:flex-row md:space-x-6">
                     <a href="#modulos" class="block py-3 px-6 hover:bg-gray-100 dark:hover:bg-gray-700 md:p-0 md:hover:bg-transparent md:hover:text-blue-600" data-i18n="header.modules"></a>
@@ -34,13 +30,9 @@
                     <a href="#contacto" class="block py-3 px-6 hover:bg-gray-100 dark:hover:bg-gray-700 md:p-0 md:hover:bg-transparent md:hover:text-blue-600" data-i18n="header.contact"></a>
                 </div>
             </nav>
-
             <div class="flex items-center gap-4">
-                <a href="./plan gratis/inicio.html" class="hidden md:block border border-blue-600 text-blue-600 font-semibold py-2 px-4 rounded-lg shadow hover:bg-blue-50 dark:text-white dark:hover:bg-gray-700 transition-colors" data-i18n="header.try_free">
-                </a>
-                <a href="./login.html" class="cta-button hidden md:block" data-i18n="header.login">
-                </a>
-                
+                <a href="./plan gratis/inicio.html" class="hidden md:block border border-blue-600 text-blue-600 font-semibold py-2 px-4 rounded-lg shadow hover:bg-blue-50 dark:text-white dark:hover:bg-gray-700 transition-colors" data-i18n="header.try_free"></a>
+                <a href="./login.html" class="cta-button hidden md:block" data-i18n="header.login"></a>
                 <div class="relative">
                     <select id="language-switcher" class="text-sm bg-gray-200 dark:bg-gray-700 border-none rounded-md py-2 px-4 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="es">Español</option>
@@ -49,7 +41,6 @@
                         <option value="pt">Português</option>
                     </select>
                 </div>
-
                 <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
                     <i data-feather="sun" class="h-5 w-5 block dark:hidden"></i>
                     <i data-feather="moon" class="h-5 w-5 hidden dark:block"></i>
@@ -68,11 +59,9 @@
                 <p class="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-3xl mx-auto" data-aos="fade-down" data-aos-delay="200">
                     <span id="typed-subtitle"></span>
                 </p>
-                <a href="#precios" class="cta-button" data-i18n="hero.view_plans" data-aos="fade-up" data-aos-delay="400">
-                </a>
+                <a href="#precios" class="cta-button" data-i18n="hero.view_plans" data-aos="fade-up" data-aos-delay="400"></a>
             </div>
         </section>
-
         <section id="modulos" class="py-20">
             <div class="container mx-auto px-6">
                 <div class="text-center mb-12" data-aos="fade-up">
@@ -144,7 +133,6 @@
                 </div>
             </div>
         </section>
-
         <section id="precios" class="py-20 bg-white dark:bg-gray-800">
             <div class="container mx-auto px-6">
                 <div class="text-center mb-12" data-aos="fade-up">
@@ -185,7 +173,6 @@
                 </div>
             </div>
         </section>
-
         <section id="nosotros" class="py-20">
             <div class="container mx-auto px-6 text-center" data-aos="fade-up">
                  <span class="text-blue-600 font-semibold" data-i18n="about.tagline"></span>
@@ -193,7 +180,6 @@
                 <p class="max-w-3xl mx-auto text-gray-600 dark:text-gray-400" data-i18n="about.description"></p>
             </div>
         </section>
-
         <section id="contacto" class="py-20 bg-white dark:bg-gray-800">
             <div class="container mx-auto px-6 text-center" data-aos="fade-up">
                 <span class="text-blue-600 font-semibold" data-i18n="contact.tagline"></span>
@@ -258,6 +244,54 @@
         </div>
     </footer>
 
+    <div id="floating-widgets-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-4">
+        
+        <div class="widget-wrapper">
+            <button id="ai-toggle-button" class="floating-button bg-blue-600 hover:bg-blue-700">
+                <i data-feather="cpu" class="h-8 w-8 text-white"></i>
+            </button>
+            <div id="ai-chat-window" class="chat-window hidden">
+                <div class="chat-header" data-i18n="ai_chat.title"></div>
+                <div id="ai-message-list" class="chat-body"></div>
+                <div class="chat-footer">
+                    <form id="ai-chat-form" class="flex gap-2">
+                        <input type="text" id="ai-message-input" class="chat-input" data-i18n-placeholder="ai_chat.input_placeholder" autocomplete="off">
+                        <button type="submit" class="chat-send-button"><i data-feather="send"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="widget-wrapper">
+            <button id="support-toggle-button" class="floating-button bg-green-500 hover:bg-green-600">
+                <i data-feather="message-square" class="h-8 w-8 text-white"></i>
+            </button>
+            <div id="support-chat-window" class="chat-window hidden">
+                <div id="support-login-view" class="p-6 flex flex-col items-center justify-center h-full">
+                    <h3 class="font-bold text-lg mb-2" data-i18n="support_chat.title"></h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center" data-i18n="support_chat.prompt"></p>
+                    <form id="support-login-form" class="w-full space-y-3">
+                        <input type="text" id="support-username-input" class="w-full border rounded-md p-2 dark:bg-gray-700 dark:border-gray-600" data-i18n-placeholder="support_chat.username_placeholder" required>
+                        <select id="support-department-select" class="w-full border rounded-md p-2 dark:bg-gray-700 dark:border-gray-600">
+                            <option value="Ventas" data-i18n="support_chat.department_sales"></option>
+                            <option value="Soporte" data-i18n="support_chat.department_support"></option>
+                        </select>
+                        <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700" data-i18n="support_chat.connect_button"></button>
+                    </form>
+                </div>
+                <div id="support-main-view" class="hidden h-full flex flex-col">
+                    <div class="chat-header" id="support-chat-header"></div>
+                    <div id="support-message-list" class="chat-body"></div>
+                    <div class="chat-footer">
+                        <form id="support-chat-form" class="flex gap-2">
+                            <input type="text" id="support-message-input" class="chat-input" data-i18n-placeholder="support_chat.message_placeholder" autocomplete="off">
+                            <button type="submit" class="chat-send-button"><i data-feather="send"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://unpkg.com/typed.js@2.0.16/dist/typed.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>

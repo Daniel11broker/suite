@@ -1,37 +1,50 @@
-// Se eliminó la importación de db.js
 import { translations } from './translations.js';
+// Importa desde los dos nuevos archivos de chat separados
+import { initializeSupportChat } from './support-chat-widget.js';
+import { initializeAiChat } from './ai-chat-widget.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Inicializa los iconos de la página
     feather.replace();
 
     // --- LÓGICA DE INTERNACIONALIZACIÓN (I18N) ---
     const languageSelector = document.getElementById('language-selector');
 
     const setLanguage = (lang) => {
-        const elements = document.querySelectorAll('[data-translate]');
-        const placeholderElements = document.querySelectorAll('[data-translate-placeholder]');
-
-        elements.forEach(el => {
-            const key = el.getAttribute('data-translate');
-            if (translations[lang] && translations[lang][key]) {
-                el.textContent = translations[lang][key];
-            }
+        // Traducir elementos principales de la página
+        document.querySelectorAll('[data-translate], [data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-translate') || el.getAttribute('data-i18n');
+            const translation = key.split('.').reduce((obj, i) => (obj ? obj[i] : null), translations[lang]);
+            if (translation) el.textContent = translation;
         });
 
-        placeholderElements.forEach(el => {
-            const key = el.getAttribute('data-translate-placeholder');
-            if (translations[lang] && translations[lang][key]) {
-                el.setAttribute('placeholder', translations[lang][key]);
-            }
+        // Traducir placeholders
+        document.querySelectorAll('[data-translate-placeholder], [data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-translate-placeholder') || el.getAttribute('data-i18n-placeholder');
+            const translation = key.split('.').reduce((obj, i) => (obj ? obj[i] : null), translations[lang]);
+            if (translation) el.setAttribute('placeholder', translation);
         });
         
+        // Traducir opciones del select en el chat
+        const salesOption = document.querySelector('[data-i18n="support_chat.department_sales"]');
+        if (salesOption) salesOption.textContent = translations[lang].support_chat.department_sales;
+        
+        const supportOption = document.querySelector('[data-i18n="support_chat.department_support"]');
+        if (supportOption) supportOption.textContent = translations[lang].support_chat.department_support;
+
         document.documentElement.lang = lang;
         localStorage.setItem('lang', lang);
-        languageSelector.value = lang;
+        if (languageSelector) {
+            languageSelector.value = lang;
+        }
+        feather.replace();
     };
 
     languageSelector.addEventListener('change', (e) => {
-        setLanguage(e.target.value);
+        const newLang = e.target.value;
+        setLanguage(newLang);
+        // Dispara un evento para que los módulos de chat sepan que el idioma cambió
+        document.dispatchEvent(new CustomEvent('languageChanged', { detail: { lang: newLang } }));
     });
 
     const savedLanguage = localStorage.getItem('lang') || 'es';
@@ -65,8 +78,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         const currentLang = localStorage.getItem('lang') || 'es';
 
         try {
-            // Esta es la parte clave que se conecta con tu backend
-            const response = await fetch(`./authLogin`, {
+            // Se conecta con el backend en la ruta /authLogin
+            const response = await fetch(`/authLogin`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -74,11 +87,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify({ username, password })
             });
             
+            if (!response.ok) {
+                const errorResult = await response.json().catch(() => ({ message: 'Error de autenticación' }));
+                throw new Error(errorResult.message);
+            }
+
             const result = await response.json();
 
-            if (response.ok) {
+            if (result.user) {
                 const user = result.user;
                 
+                // Guarda la información del usuario en el navegador
                 localStorage.setItem('loggedInUser', JSON.stringify({ 
                     username: user.username, 
                     role: user.role, 
@@ -86,7 +105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     adminId: user.adminId || null
                 }));
                 
-                // Redirección según el rol del usuario
+                // Redirige al usuario según su rol
                 if (user.role === 'superadmin') {
                     window.location.href = './superadmin.html';
                 } else if (user.role === 'admin') {
@@ -95,11 +114,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                     window.location.href = './plan gratis/inicio.html';
                 }
             } else {
-                loginError.textContent = result.message || translations[currentLang].wrongCredentialsError;
+                 loginError.textContent = result.message || translations[currentLang].wrongCredentialsError;
             }
         } catch (error) {
-            console.error('Error de conexión:', error);
-            loginError.textContent = 'No se pudo conectar al servidor. Inténtalo de nuevo más tarde.';
+            console.error('Error de conexión o autenticación:', error);
+            loginError.textContent = translations[currentLang].wrongCredentialsError || 'No se pudo conectar al servidor.';
         }
     });
+
+    // --- INICIALIZACIÓN DE WIDGETS ---
+    // Llama a cada función de inicialización por separado, pasándoles las traducciones y el idioma.
+    initializeSupportChat(translations, savedLanguage);
+    initializeAiChat(translations, savedLanguage);
 });

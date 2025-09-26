@@ -58,11 +58,58 @@
         </div>
     </div>
     
+    <div id="floating-widgets-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-4">
+        
+        <div class="widget-wrapper">
+            <button id="ai-toggle-button" class="floating-button bg-blue-600 hover:bg-blue-700">
+                <i data-feather="cpu" class="h-8 w-8 text-white"></i>
+            </button>
+            <div id="ai-chat-window" class="chat-window hidden">
+                <div class="chat-header" data-i18n="ai_chat.title"></div>
+                <div id="ai-message-list" class="chat-body"></div>
+                <div class="chat-footer">
+                    <form id="ai-chat-form" class="flex gap-2">
+                        <input type="text" id="ai-message-input" class="chat-input" data-i18n-placeholder="ai_chat.input_placeholder" autocomplete="off">
+                        <button type="submit" class="chat-send-button"><i data-feather="send"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="widget-wrapper">
+            <button id="support-toggle-button" class="floating-button bg-green-500 hover:bg-green-600">
+                <i data-feather="message-square" class="h-8 w-8 text-white"></i>
+            </button>
+            <div id="support-chat-window" class="chat-window hidden">
+                <div id="support-login-view" class="p-6 flex flex-col items-center justify-center h-full">
+                    <h3 class="font-bold text-lg mb-2" data-i18n="support_chat.title"></h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center" data-i18n="support_chat.prompt"></p>
+                    <form id="support-login-form" class="w-full space-y-3">
+                        <input type="text" id="support-username-input" class="w-full border rounded-md p-2 dark:bg-gray-700 dark:border-gray-600" data-i18n-placeholder="support_chat.username_placeholder" required>
+                        <select id="support-department-select" class="w-full border rounded-md p-2 dark:bg-gray-700 dark:border-gray-600">
+                            <option value="Ventas" data-i18n="support_chat.department_sales"></option>
+                            <option value="Soporte" data-i18n="support_chat.department_support"></option>
+                        </select>
+                        <button type="submit" class="w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700" data-i18n="support_chat.connect_button"></button>
+                    </form>
+                </div>
+                <div id="support-main-view" class="hidden h-full flex flex-col">
+                    <div class="chat-header" id="support-chat-header"></div>
+                    <div id="support-message-list" class="chat-body"></div>
+                    <div class="chat-footer">
+                        <form id="support-chat-form" class="flex gap-2">
+                            <input type="text" id="support-message-input" class="chat-input" data-i18n-placeholder="support_chat.message_placeholder" autocomplete="off">
+                            <button type="submit" class="chat-send-button"><i data-feather="send"></i></button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script src="translations.js" type="module"></script>
     <script src="login.js" type="module"></script>
 </body>
 </html>
-
 
 
 
