@@ -1,28 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Lógica del menú lateral y tema ---
-    const sidebar = document.getElementById('sidebar');
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    if (window.innerWidth >= 768) {
-        sidebar.addEventListener('mouseenter', () => sidebar.classList.add('expanded'));
-        sidebar.addEventListener('mouseleave', () => sidebar.classList.remove('expanded'));
-    }
-    mobileMenuButton.addEventListener('click', (e) => { e.stopPropagation(); sidebar.classList.toggle('expanded'); });
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth < 768 && sidebar.classList.contains('expanded') && !sidebar.contains(e.target)) {
-            sidebar.classList.remove('expanded');
-        }
-    });
-
-    const themeToggle = document.getElementById('theme-toggle');
-    const applyTheme = (theme) => document.documentElement.classList.toggle('dark', theme === 'dark');
-    
-    themeToggle.addEventListener('click', () => {
-        const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-        localStorage.setItem('theme', newTheme);
-        applyTheme(newTheme);
-        renderAll(); 
-    });
-
+document.addEventListener('DOMContentLoaded', async () => {
     // --- SELECTORES DOM Y ESTADO GLOBAL ---
     const dom = {
         totalValue: document.getElementById('inventory-total-value'),
@@ -53,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
             barcode: document.getElementById('barcode-modal'),
             abcAnalysis: document.getElementById('abc-analysis-modal'),
             profitability: document.getElementById('profitability-report-modal'),
-            imagePreview: document.getElementById('image-preview-modal'),
         },
     };
 
@@ -68,19 +43,60 @@ document.addEventListener('DOMContentLoaded', () => {
         pagination: { currentPage: 1, itemsPerPage: 10, totalItems: 0, },
         selectedItems: new Set(),
     };
+    let isUserLoggedIn = false;
 
     // --- LÓGICA DE DATOS ---
-    const saveData = () => {
+    const api = {
+        async request(method, endpoint, body = null) {
+            try {
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+                const response = await fetch(endpoint, options);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+                    throw new Error(errorData.error || `Error: ${response.status}`);
+                }
+                if (response.status === 204) return null;
+                return response.json();
+            } catch (error) {
+                showToast(error.message, 'error');
+                throw error;
+            }
+        },
+        get: (endpoint) => api.request('GET', endpoint),
+        post: (endpoint, body) => api.request('POST', endpoint, body),
+        put: (endpoint, body) => api.request('PUT', endpoint, body),
+        delete: (endpoint) => api.request('DELETE', endpoint)
+    };
+    
+    const checkLoginStatus = () => {
+        isUserLoggedIn = !!localStorage.getItem('loggedInUser');
+        console.log('Modo de operación Inventario:', isUserLoggedIn ? 'Base de Datos (Online)' : 'LocalStorage (Offline)');
+    };
+
+    const saveLocalData = () => {
         localStorage.setItem('inventory', JSON.stringify(state.inventory));
         localStorage.setItem('inventory_movements', JSON.stringify(state.movements));
     };
-    const loadData = () => {
-        state.inventory = JSON.parse(localStorage.getItem('inventory')) || [];
-        state.movements = JSON.parse(localStorage.getItem('inventory_movements')) || [];
-        state.suppliers = (JSON.parse(localStorage.getItem('compras_data_v1')) || { suppliers: [] }).suppliers;
+    
+    const loadData = async () => {
+        if (isUserLoggedIn) {
+            try {
+                const initialData = await api.get('/api/inventory/initial-data');
+                state.inventory = initialData.inventory || [];
+                state.movements = initialData.movements || [];
+                state.suppliers = initialData.suppliers || [];
+            } catch (error) {
+                state.inventory = []; state.movements = []; state.suppliers = [];
+            }
+        } else {
+            state.inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+            state.movements = JSON.parse(localStorage.getItem('inventory_movements')) || [];
+            state.suppliers = (JSON.parse(localStorage.getItem('compras_data_v1')) || { suppliers: [] }).suppliers;
+        }
     };
     
-    const processIncomingPurchaseOrder = () => {
+    const processIncomingPurchaseOrder = async () => {
         const poDataString = localStorage.getItem('inventoryUpdateFromPO');
         if (!poDataString) return;
 
@@ -88,33 +104,43 @@ document.addEventListener('DOMContentLoaded', () => {
         const poId = poData.purchaseOrderId;
         let itemsUpdated = 0;
 
-        poData.items.forEach(item => {
+        for (const item of poData.items) {
             const productIndex = state.inventory.findIndex(p => p.id == item.productId);
             if (productIndex > -1) {
-                const oldQuantity = state.inventory[productIndex].quantity;
+                const product = state.inventory[productIndex];
+                const oldStock = product.stock;
                 const quantityAdded = parseInt(item.quantity, 10);
-                const newQuantity = oldQuantity + quantityAdded;
-                state.inventory[productIndex].quantity = newQuantity;
+                const newStock = oldStock + quantityAdded;
+                product.stock = newStock;
 
-                state.movements.push({
-                    id: Date.now() + Math.random(),
+                const movement = {
                     productId: parseInt(item.productId),
                     date: new Date().toISOString().slice(0, 10),
                     type: 'Entrada por Compra',
                     quantityChange: `+${quantityAdded}`,
-                    newQuantity: newQuantity,
+                    newQuantity: newStock,
                     reason: `OC #${poId}`
-                });
+                };
+
+                if (isUserLoggedIn) {
+                    await api.put(`/api/inventory/products/${product.id}`, product);
+                    await api.post('/api/inventory/movements', movement);
+                } else {
+                    movement.id = Date.now() + Math.random();
+                    state.movements.push(movement);
+                }
                 itemsUpdated++;
             }
-        });
+        }
 
         if (itemsUpdated > 0) {
-            saveData();
+            if (!isUserLoggedIn) saveLocalData();
             showToast(`${itemsUpdated} producto(s) recibidos y añadidos al stock.`);
         }
         
         localStorage.removeItem('inventoryUpdateFromPO');
+        await loadData();
+        renderAll();
     };
     
     const formatCurrency = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
@@ -137,33 +163,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleModal = (modalEl, show) => {
         if (show) {
             modalEl.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
-            modalEl.addEventListener('click', closeModalOnBackdropClick);
         } else {
             modalEl.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
-            modalEl.removeEventListener('click', closeModalOnBackdropClick);
         }
     };
     
-    const closeModalOnBackdropClick = (e) => {
-        if (e.target === e.currentTarget) {
-            toggleModal(e.target, false);
-        }
-    };
-
     const getStockStatusInfo = (p) => {
-        if (p.quantity <= 0) return { key: 'out_of_stock', html: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">Agotado</span>' };
-        if (p.reorderPoint > 0 && p.quantity <= p.reorderPoint) return { key: 'reorder', html: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300">Pedir</span>' };
-        if (p.lowStockThreshold > 0 && p.quantity <= p.lowStockThreshold) return { key: 'low_stock', html: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Stock Bajo</span>' };
+        if (p.stock <= 0) return { key: 'out_of_stock', html: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300">Agotado</span>' };
+        if (p.reorderPoint > 0 && p.stock <= p.reorderPoint) return { key: 'reorder', html: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300">Pedir</span>' };
+        if (p.lowStockThreshold > 0 && p.stock <= p.lowStockThreshold) return { key: 'low_stock', html: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300">Stock Bajo</span>' };
         return { key: 'in_stock', html: '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300">En Stock</span>' };
     };
     
-    const fileToBase64 = (file) => new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-    });
-
     const renderAll = () => {
         renderDashboard();
         populateSupplierFilter();
@@ -176,8 +187,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const statusCounts = { in_stock: 0, low_stock: 0, reorder: 0, out_of_stock: 0 };
 
         state.inventory.forEach(p => {
-            totalValue += (p.salePrice || 0) * (p.quantity || 0);
-            if (p.quantity > 0 && p.quantity <= p.lowStockThreshold) lowStockCount++;
+            totalValue += (p.price || 0) * (p.stock || 0);
+            if (p.stock > 0 && p.stock <= p.lowStockThreshold) lowStockCount++;
             statusCounts[getStockStatusInfo(p).key]++;
         });
 
@@ -237,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const populateSupplierFilter = () => {
         const currentVal = dom.supplierFilter.value;
         dom.supplierFilter.innerHTML = '<option value="">Todos los proveedores</option>';
-        state.suppliers.forEach(s => {
+        (state.suppliers || []).forEach(s => {
             dom.supplierFilter.innerHTML += `<option value="${s.id}">${s.name}</option>`;
         });
         dom.supplierFilter.value = currentVal;
@@ -246,7 +257,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderTable = () => {
         let filteredInventory = state.inventory.filter(p => {
             const status = getStockStatusInfo(p).key;
-            const matchesSearch = p.name.toLowerCase().includes(state.filters.search) || p.sku.toLowerCase().includes(state.filters.search);
+            const searchTerm = state.filters.search.toLowerCase();
+            const matchesSearch = p.name.toLowerCase().includes(searchTerm) || (p.sku && p.sku.toLowerCase().includes(searchTerm));
             const matchesSupplier = !state.filters.supplier || p.supplierId == state.filters.supplier;
             const matchesStatus = !state.filters.status || status === state.filters.status;
             return matchesSearch && matchesSupplier && matchesStatus;
@@ -294,8 +306,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-600">${p.location || 'N/A'}</td>
-                <td class="px-6 py-4">${formatCurrency(p.salePrice)}</td>
-                <td class="px-6 py-4 font-bold">${p.quantity}</td>
+                <td class="px-6 py-4">${formatCurrency(p.price)}</td>
+                <td class="px-6 py-4 font-bold">${p.stock}</td>
                 <td class="px-6 py-4">${getStockStatusInfo(p).html}${expiryStatus}</td>
                 <td class="px-6 py-4 text-right flex justify-end gap-1">
                     <button class="action-btn text-gray-600 p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700" data-action="barcode" data-id="${p.id}" title="Generar Código de Barras"><i data-feather="grid"></i></button>
@@ -358,14 +370,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedCount > 0) {
             dom.bulkActionsContainer.classList.remove('hidden');
             dom.bulkActionsContainer.innerHTML = `<span class="font-semibold">${selectedCount} producto(s) seleccionado(s).</span><button id="bulk-delete-btn" class="text-red-600 font-semibold text-sm hover:underline">Eliminar Seleccionados</button>`;
-            document.getElementById('bulk-delete-btn').addEventListener('click', () => {
+            document.getElementById('bulk-delete-btn').addEventListener('click', async () => {
                 const selectedCountAtClick = state.selectedItems.size;
                 if (confirm(`¿Estás seguro de que quieres eliminar ${selectedCountAtClick} productos?`)) {
-                    state.inventory = state.inventory.filter(p => !state.selectedItems.has(p.id));
+                    if (isUserLoggedIn) {
+                        try {
+                            await Promise.all(Array.from(state.selectedItems).map(id => api.delete(`/api/inventory/products/${id}`)));
+                        } catch(e) { /* error ya mostrado */ }
+                    } else {
+                        state.inventory = state.inventory.filter(p => !state.selectedItems.has(p.id));
+                        saveLocalData();
+                    }
                     state.selectedItems.clear();
-                    saveData();
-                    renderAll();
                     showToast(`${selectedCountAtClick} productos eliminados`, 'error');
+                    await loadData();
+                    renderAll();
                 }
             });
         } else {
@@ -376,9 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openProductModal = (product = null) => {
         state.editingProductId = product ? product.id : null;
-        
         const supplierOptions = state.suppliers.map(s => `<option value="${s.id}" ${product?.supplierId == s.id ? 'selected' : ''}>${s.name}</option>`).join('');
-
         dom.modals.product.innerHTML = `
             <div class="bg-white dark:bg-gray-800 w-11/12 md:max-w-2xl mx-auto rounded-lg shadow-xl z-50">
                 <div class="py-4 text-left px-6">
@@ -396,10 +413,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div><label class="block text-sm font-medium">Descripción</label><textarea name="description" rows="2" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600">${product?.description || ''}</textarea></div>
                         <div class="grid md:grid-cols-2 gap-4">
                             <div><label class="block text-sm font-medium">Precio de Costo</label><input type="number" name="costPrice" value="${product?.costPrice || 0}" step="0.01" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required min="0"></div>
-                            <div><label class="block text-sm font-medium">Precio de Venta</label><input type="number" name="salePrice" value="${product?.salePrice || 0}" step="0.01" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required min="0"></div>
+                            <div><label class="block text-sm font-medium">Precio de Venta</label><input type="number" name="price" value="${product?.price || 0}" step="0.01" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required min="0"></div>
                         </div>
                         <div class="grid md:grid-cols-3 gap-4">
-                            <div><label class="block text-sm font-medium">Cantidad</label><input type="number" name="quantity" value="${product?.quantity || 0}" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required min="0" ${product ? 'disabled' : ''}></div>
+                            <div><label class="block text-sm font-medium">Cantidad (Stock)</label><input type="number" name="stock" value="${product?.stock || 0}" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required min="0" ${product ? 'disabled' : ''}></div>
                             <div><label class="block text-sm font-medium">Stock Bajo</label><input type="number" name="lowStockThreshold" value="${product?.lowStockThreshold || 0}" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required min="0"></div>
                             <div><label class="block text-sm font-medium">Punto de Reorden</label><input type="number" name="reorderPoint" value="${product?.reorderPoint || 0}" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required min="0"></div>
                         </div>
@@ -419,7 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         dom.modals.product.querySelector('#product-form').addEventListener('submit', handleProductSubmit);
         dom.modals.product.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = () => toggleModal(dom.modals.product, false));
-        
         toggleModal(dom.modals.product, true);
         feather.replace();
     };
@@ -430,34 +446,42 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = Object.fromEntries(formData.entries());
         
         const productData = {
-            id: state.editingProductId || Date.now(), name: data.name, sku: data.sku, category: data.category, description: data.description,
-            costPrice: parseFloat(data.costPrice), salePrice: parseFloat(data.salePrice),
-            quantity: parseInt(data.quantity), lowStockThreshold: parseInt(data.lowStockThreshold), reorderPoint: parseInt(data.reorderPoint),
+            id: state.editingProductId, name: data.name, sku: data.sku, category: data.category, description: data.description,
+            costPrice: parseFloat(data.costPrice), price: parseFloat(data.price),
+            stock: parseInt(data.stock), lowStockThreshold: parseInt(data.lowStockThreshold), reorderPoint: parseInt(data.reorderPoint),
             batch: data.batch, expiryDate: data.expiryDate, supplierId: data.supplierId, location: data.location
         };
 
-        if (state.inventory.some(p => p.sku.toLowerCase() === productData.sku.toLowerCase() && p.id !== productData.id)) {
-            return showToast('El SKU ya existe. Debe ser único.', 'error');
-        }
-
-        if (state.editingProductId) {
-            const index = state.inventory.findIndex(p => p.id === state.editingProductId);
-            productData.quantity = state.inventory[index].quantity;
-            state.inventory[index] = productData;
-            showToast('Producto actualizado con éxito');
-        } else {
-            state.inventory.push(productData);
-            state.movements.push({
-                id: Date.now(), productId: productData.id, date: new Date().toISOString().slice(0, 10),
-                type: 'Creación', quantityChange: `+${productData.quantity}`, newQuantity: productData.quantity,
-                reason: 'Stock Inicial'
-            });
-            showToast('Producto agregado con éxito');
-        }
-        
-        saveData();
-        renderAll();
-        toggleModal(dom.modals.product, false);
+        try {
+            if (isUserLoggedIn) {
+                if (state.editingProductId) {
+                    const index = state.inventory.findIndex(p => p.id === state.editingProductId);
+                    productData.stock = state.inventory[index].stock;
+                    await api.put(`/api/inventory/products/${state.editingProductId}`, productData);
+                } else {
+                    await api.post('/api/inventory/products', productData);
+                }
+            } else {
+                if (state.editingProductId) {
+                    const index = state.inventory.findIndex(p => p.id === state.editingProductId);
+                    productData.stock = state.inventory[index].stock;
+                    state.inventory[index] = { ...state.inventory[index], ...productData };
+                } else {
+                    productData.id = Date.now();
+                    state.inventory.push(productData);
+                    state.movements.push({
+                        id: Date.now() + 1, productId: productData.id, date: new Date().toISOString().slice(0, 10),
+                        type: 'Creación', quantityChange: `+${productData.stock}`, newQuantity: productData.stock,
+                        reason: 'Stock Inicial'
+                    });
+                }
+                saveLocalData();
+            }
+            showToast(state.editingProductId ? 'Producto actualizado' : 'Producto agregado');
+            toggleModal(dom.modals.product, false);
+            await loadData();
+            renderAll();
+        } catch (err) {}
     };
 
     const handleTableClick = (e) => {
@@ -471,28 +495,32 @@ document.addEventListener('DOMContentLoaded', () => {
             const product = state.inventory.find(p => p.id === id);
             
             switch (action) {
-                case 'barcode': window.openBarcodeModal(product); break;
-                case 'adjust': window.openAdjustmentModal(product); break;
-                case 'history': window.openHistoryModal(product); break;
+                case 'barcode': openBarcodeModal(product); break;
+                case 'adjust': openAdjustmentModal(product); break;
+                case 'history': openHistoryModal(product); break;
                 case 'edit': openProductModal(product); break;
                 case 'delete': deleteSingleProduct(id); break;
             }
         } else if (target.matches('.row-checkbox')) {
-            if (target.checked) {
-                state.selectedItems.add(id);
-            } else {
-                state.selectedItems.delete(id);
-            }
-            renderTable();
+            if (target.checked) state.selectedItems.add(id);
+            else state.selectedItems.delete(id);
+            updateBulkActionsUI();
         }
     };
     
-    const deleteSingleProduct = (id) => {
-        if (confirm('¿Estás seguro de que quieres eliminar este producto? Esta acción no se puede deshacer.')) {
-            state.inventory = state.inventory.filter(p => p.id !== id);
-            saveData();
-            renderAll();
-            showToast('Producto eliminado', 'error');
+    const deleteSingleProduct = async (id) => {
+        if (confirm('¿Estás seguro de que quieres eliminar este producto?')) {
+            try {
+                if(isUserLoggedIn) {
+                    await api.delete(`/api/inventory/products/${id}`);
+                } else {
+                    state.inventory = state.inventory.filter(p => p.id !== id);
+                    saveLocalData();
+                }
+                showToast('Producto eliminado', 'error');
+                await loadData();
+                renderAll();
+            } catch(err) {}
         }
     };
 
@@ -508,75 +536,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const handleFilterChange = () => {
-        state.filters.search = dom.searchInput.value.toLowerCase();
+        state.filters.search = dom.searchInput.value;
         state.filters.supplier = dom.supplierFilter.value;
         state.filters.status = dom.stockStatusFilter.value;
         state.pagination.currentPage = 1;
         renderTable();
     };
     
-    const setupEventListeners = () => {
-        dom.addProductBtn.addEventListener('click', () => openProductModal());
-        dom.abcAnalysisBtn.addEventListener('click', openAbcAnalysisModal);
-        dom.profitabilityReportBtn.addEventListener('click', openProfitabilityReportModal);
-        dom.searchInput.addEventListener('input', handleFilterChange);
-        dom.supplierFilter.addEventListener('change', handleFilterChange);
-        dom.stockStatusFilter.addEventListener('change', handleFilterChange);
-        
-        dom.resetFiltersBtn.addEventListener('click', () => {
-            dom.searchInput.value = '';
-            dom.supplierFilter.value = '';
-            dom.stockStatusFilter.value = '';
-            handleFilterChange();
-        });
-
-        dom.importCsvBtn.addEventListener('click', () => dom.csvFileInput.click());
-        dom.csvFileInput.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) handleCsvImport(e.target.files[0]);
-            e.target.value = null;
-        });
-        
-        dom.exportCsvBtn.addEventListener('click', handleExportCsv);
-        dom.exportPdfBtn.addEventListener('click', handleExportPdf);
-        
-        dom.tableBody.addEventListener('click', handleTableClick);
-        document.querySelectorAll('.sortable').forEach(th => th.addEventListener('click', handleSort));
-
-        dom.paginationControls.addEventListener('click', (e) => {
-            const button = e.target.closest('button');
-            if (button && button.dataset.page) {
-                state.pagination.currentPage = parseInt(button.dataset.page);
-                renderTable();
-            }
-        });
-        
-        dom.selectAllCheckbox.addEventListener('change', (e) => {
-            document.querySelectorAll('.row-checkbox').forEach(cb => {
-                const id = parseInt(cb.dataset.id);
-                if (e.target.checked) {
-                    state.selectedItems.add(id);
-                } else {
-                    state.selectedItems.delete(id);
-                }
-            });
-            renderTable();
-        });
-    };
-
-    // (The rest of the file remains unchanged)
-    // ...
-    window.openAdjustmentModal = (product) => {
+    const openAdjustmentModal = (product) => {
         dom.modals.adjustment.innerHTML = `
             <div class="bg-white dark:bg-gray-800 w-11/12 md:max-w-md mx-auto rounded-lg shadow-xl z-50">
                 <div class="py-4 text-left px-6">
-                    <div class="flex justify-between items-center pb-3 border-b dark:border-gray-600"><p class="text-2xl font-bold">Ajustar Stock</p><button class="close-modal-btn cursor-pointer p-1"><i data-feather="x"></i></button></div>
+                    <div class="flex justify-between items-center pb-3 border-b"><p class="text-2xl font-bold">Ajustar Stock</p><button class="close-modal-btn cursor-pointer p-1"><i data-feather="x"></i></button></div>
                     <form id="adjustment-form" class="mt-4 space-y-4">
-                        <p><strong>Producto:</strong> ${product.name}</p><p><strong>Stock Actual:</strong> ${product.quantity}</p>
+                        <p><strong>Producto:</strong> ${product.name}</p><p><strong>Stock Actual:</strong> ${product.stock}</p>
                         <input type="hidden" name="productId" value="${product.id}">
-                        <div><label class="block text-sm">Tipo de Ajuste</label><select name="type" class="mt-1 w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600"><option value="increase">Aumento</option><option value="decrease">Disminución</option></select></div>
-                        <div><label class="block text-sm">Cantidad a Ajustar</label><input type="number" name="quantity" class="mt-1 w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required min="1"></div>
-                        <div><label class="block text-sm">Razón</label><input type="text" name="reason" placeholder="Ej: Conteo físico" class="mt-1 w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required></div>
-                        <div class="flex justify-end mt-6 pt-4 border-t dark:border-gray-700"><button type="button" class="close-modal-btn bg-gray-200 dark:bg-gray-600 py-2 px-4 rounded-lg mr-2">Cancelar</button><button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-lg">Aplicar Ajuste</button></div>
+                        <div><label>Tipo de Ajuste</label><select name="type" class="mt-1 w-full border rounded p-2"><option value="increase">Aumento</option><option value="decrease">Disminución</option></select></div>
+                        <div><label>Cantidad</label><input type="number" name="quantity" class="mt-1 w-full border rounded p-2" required min="1"></div>
+                        <div><label>Razón</label><input type="text" name="reason" placeholder="Ej: Conteo físico" class="mt-1 w-full border rounded p-2" required></div>
+                        <div class="flex justify-end mt-6 pt-4 border-t"><button type="button" class="close-modal-btn bg-gray-200 py-2 px-4 rounded-lg mr-2">Cancelar</button><button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded-lg">Aplicar</button></div>
                     </form>
                 </div>
             </div>`;
@@ -586,25 +564,41 @@ document.addEventListener('DOMContentLoaded', () => {
         feather.replace();
     };
 
-    const handleAdjustmentSubmit = (e) => {
+    const handleAdjustmentSubmit = async (e) => {
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target).entries());
         const productId = parseInt(data.productId);
         const productIndex = state.inventory.findIndex(p => p.id === productId);
         if (productIndex > -1) {
-            const oldQuantity = state.inventory[productIndex].quantity;
+            const product = state.inventory[productIndex];
+            const oldStock = product.stock;
             const adjustmentQty = parseInt(data.quantity);
-            const newQuantity = data.type === 'increase' ? oldQuantity + adjustmentQty : oldQuantity - adjustmentQty;
-            state.inventory[productIndex].quantity = newQuantity;
-            state.movements.push({
-                id: Date.now(), productId, date: new Date().toISOString().slice(0,10), type: 'Ajuste Manual',
-                quantityChange: data.type === 'increase' ? `+${adjustmentQty}` : `-${adjustmentQty}`, newQuantity, reason: data.reason
-            });
-            saveData(); renderAll(); toggleModal(dom.modals.adjustment, false); showToast('Stock ajustado con éxito');
+            const newStock = data.type === 'increase' ? oldStock + adjustmentQty : oldStock - adjustmentQty;
+            product.stock = newStock;
+            
+            const movement = {
+                productId, date: new Date().toISOString().slice(0,10), type: 'Ajuste Manual',
+                quantityChange: data.type === 'increase' ? `+${adjustmentQty}` : `-${adjustmentQty}`, newQuantity: newStock, reason: data.reason
+            };
+
+            if (isUserLoggedIn) {
+                await Promise.all([
+                    api.put(`/api/inventory/products/${productId}`, product),
+                    api.post('/api/inventory/movements', movement)
+                ]);
+            } else {
+                movement.id = Date.now();
+                state.movements.push(movement);
+                saveLocalData();
+            }
+            toggleModal(dom.modals.adjustment, false); 
+            showToast('Stock ajustado con éxito');
+            await loadData();
+            renderAll();
         }
     };
     
-    window.openHistoryModal = (product) => {
+    const openHistoryModal = (product) => {
         const productMovements = state.movements.filter(m => m.productId === product.id).slice().reverse();
         let movementsHtml = '<p class="text-sm text-gray-500">No hay movimientos.</p>';
         if (productMovements.length > 0) {
@@ -622,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
         toggleModal(dom.modals.history, true); feather.replace();
     };
 
-    window.openBarcodeModal = (product) => {
+    const openBarcodeModal = (product) => {
         dom.modals.barcode.innerHTML = `
             <div class="bg-white dark:bg-gray-800 w-11/12 sm:max-w-sm mx-auto rounded-lg shadow-xl z-50"><div class="py-4 px-6 text-left">
                 <div class="flex justify-between items-center pb-3 border-b dark:border-gray-600"><p class="text-xl font-bold">Código de Barras</p><button class="close-modal-btn cursor-pointer p-1"><i data-feather="x"></i></button></div>
@@ -631,17 +625,12 @@ document.addEventListener('DOMContentLoaded', () => {
             </div></div>`;
         JsBarcode("#barcode", product.sku, { format: "CODE128",lineColor: document.documentElement.classList.contains('dark') ? '#FFF' : '#000', width: 2, height: 60, displayValue: true });
         dom.modals.barcode.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = () => toggleModal(dom.modals.barcode, false));
-        dom.modals.barcode.querySelector('#print-barcode-btn').onclick = () => {
-            const content = document.getElementById('barcode-print-area').innerHTML;
-            const win = window.open('', '', 'height=400,width=600');
-            win.document.write(`<html><head><title>Imprimir</title><style>body{text-align:center;font-family:sans-serif;}</style></head><body>${content}</body></html>`);
-            win.document.close(); win.focus(); win.print(); win.close();
-        };
+        dom.modals.barcode.querySelector('#print-barcode-btn').onclick = () => { /* ... */ };
         toggleModal(dom.modals.barcode, true); feather.replace();
     };
     
     const openAbcAnalysisModal = () => {
-        const sorted = [...state.inventory].map(p => ({ ...p, value:p.costPrice * p.quantity })).sort((a,b) => b.value - a.value);
+        const sorted = [...state.inventory].map(p => ({ ...p, value:p.costPrice * p.stock })).sort((a,b) => b.value - a.value);
         const totalValue = sorted.reduce((sum, p) => sum + p.value, 0);
         let cumulativeValue = 0;
         const analysis = sorted.map(p => {
@@ -667,11 +656,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openProfitabilityReportModal = () => {
         const reportData = state.inventory.map(p => {
-            const marginValue = p.salePrice - p.costPrice;
-            const marginPercent = p.salePrice > 0 ? (marginValue / p.salePrice) * 100 : 0;
+            const marginValue = p.price - p.costPrice;
+            const marginPercent = p.price > 0 ? (marginValue / p.price) * 100 : 0;
             return { ...p, marginValue, marginPercent };
         }).sort((a,b) => b.marginPercent - a.marginPercent);
-        const rows = reportData.map(p => `<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50"><td class="p-2">${p.name}<div class="text-xs text-gray-500">SKU: ${p.sku}</div></td><td class="p-2 text-right">${formatCurrency(p.costPrice)}</td><td class="p-2 text-right">${formatCurrency(p.salePrice)}</td><td class="p-2 text-right font-bold text-green-700">${formatCurrency(p.marginValue)}</td><td class="p-2 text-right font-bold ${p.marginPercent > 50 ? 'text-green-600' : p.marginPercent > 20 ? 'text-yellow-600' : 'text-red-600'}">${p.marginPercent.toFixed(1)}%</td></tr>`).join('');
+        const rows = reportData.map(p => `<tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50"><td class="p-2">${p.name}<div class="text-xs text-gray-500">SKU: ${p.sku}</div></td><td class="p-2 text-right">${formatCurrency(p.costPrice)}</td><td class="p-2 text-right">${formatCurrency(p.price)}</td><td class="p-2 text-right font-bold text-green-700">${formatCurrency(p.marginValue)}</td><td class="p-2 text-right font-bold ${p.marginPercent > 50 ? 'text-green-600' : p.marginPercent > 20 ? 'text-yellow-600' : 'text-red-600'}">${p.marginPercent.toFixed(1)}%</td></tr>`).join('');
         dom.modals.profitability.innerHTML = `
             <div class="bg-white dark:bg-gray-800 w-11/12 md:max-w-4xl mx-auto rounded-lg shadow-xl z-50"><div class="py-4 px-6">
                 <div class="flex justify-between items-center pb-3 border-b dark:border-gray-600"><p class="text-2xl font-bold">Reporte de Rentabilidad</p><button class="close-modal-btn cursor-pointer p-1"><i data-feather="x"></i></button></div>
@@ -685,21 +674,26 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const handleCsvImport = (file) => {
+        if (isUserLoggedIn) {
+            return showToast('La importación masiva solo está disponible en modo offline.', 'error');
+        }
         Papa.parse(file, { header: true, skipEmptyLines: true, complete: (res) => {
             let added = 0, updated = 0;
             res.data.forEach(row => {
                 if (!row.sku || !row.name) return;
                 const idx = state.inventory.findIndex(p => p.sku.toLowerCase() === row.sku.toLowerCase());
-                const data = { name: row.name, sku: row.sku, category: row.category||'', description: row.description||'', costPrice: parseFloat(row.costPrice)||0, salePrice: parseFloat(row.salePrice)||0, quantity: parseInt(row.quantity)||0, lowStockThreshold: parseInt(row.lowStockThreshold)||0, reorderPoint: parseInt(row.reorderPoint)||0, batch: row.batch||'', expiryDate: row.expiryDate||'', supplierId: row.supplierId||'', location: row.location||'' };
+                const data = { name: row.name, sku: row.sku, category: row.category||'', description: row.description||'', costPrice: parseFloat(row.costPrice)||0, price: parseFloat(row.price)||0, stock: parseInt(row.stock)||0, lowStockThreshold: parseInt(row.lowStockThreshold)||0, reorderPoint: parseInt(row.reorderPoint)||0, batch: row.batch||'', expiryDate: row.expiryDate||'', supplierId: row.supplierId||'', location: row.location||'' };
                 if (idx > -1) {
                     const existing = state.inventory[idx];
-                    state.inventory[idx] = { ...existing, ...data, quantity: existing.quantity }; 
+                    state.inventory[idx] = { ...existing, ...data, stock: existing.stock }; 
                     updated++;
                 } else {
-                    state.inventory.push({ ...data, id: Date.now() }); added++;
+                    state.inventory.push({ ...data, id: Date.now() + Math.random() }); added++;
                 }
             });
-            saveData(); renderAll(); showToast(`Importación: ${added} añadidos, ${updated} actualizados.`, 'info');
+            saveLocalData(); 
+            renderAll(); 
+            showToast(`Importación: ${added} añadidos, ${updated} actualizados.`, 'info');
         }, error: (err) => { showToast('Error al importar CSV.', 'error'); console.error(err); }});
     };
     
@@ -717,14 +711,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const doc = new jsPDF();
         doc.text("Reporte de Inventario", 14, 16);
         doc.autoTable({
-            head: [['SKU', 'Nombre', 'Ubicación', 'Precio Venta', 'Cantidad']],
-            body: state.inventory.map(p => [p.sku, p.name, p.location||'N/A', formatCurrency(p.salePrice), p.quantity]),
+            head: [['SKU', 'Nombre', 'Ubicación', 'Precio Venta', 'Stock']],
+            body: state.inventory.map(p => [p.sku, p.name, p.location||'N/A', formatCurrency(p.price), p.stock]),
             startY: 20
         });
         doc.save('reporte-inventario.pdf');
     };
     
-    const setupEventsListeners = () => {
+    const setupEventListeners = () => {
         dom.addProductBtn.addEventListener('click', () => openProductModal());
         dom.abcAnalysisBtn.addEventListener('click', openAbcAnalysisModal);
         dom.profitabilityReportBtn.addEventListener('click', openProfitabilityReportModal);
@@ -733,10 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.stockStatusFilter.addEventListener('change', handleFilterChange);
         
         dom.resetFiltersBtn.addEventListener('click', () => {
-            dom.searchInput.value = '';
-            dom.supplierFilter.value = '';
-            dom.stockStatusFilter.value = '';
-            handleFilterChange();
+            dom.searchInput.value = ''; dom.supplierFilter.value = ''; dom.stockStatusFilter.value = ''; handleFilterChange();
         });
 
         dom.importCsvBtn.addEventListener('click', () => dom.csvFileInput.click());
@@ -754,28 +745,25 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.paginationControls.addEventListener('click', (e) => {
             const button = e.target.closest('button');
             if (button && button.dataset.page) {
-                state.pagination.currentPage = parseInt(button.dataset.page);
-                renderTable();
+                state.pagination.currentPage = parseInt(button.dataset.page); renderTable();
             }
         });
         
         dom.selectAllCheckbox.addEventListener('change', (e) => {
             document.querySelectorAll('.row-checkbox').forEach(cb => {
                 const id = parseInt(cb.dataset.id);
-                if (e.target.checked) {
-                    state.selectedItems.add(id);
-                } else {
-                    state.selectedItems.delete(id);
-                }
+                if (e.target.checked) state.selectedItems.add(id);
+                else state.selectedItems.delete(id);
+                cb.checked = e.target.checked;
             });
-            renderTable();
+            updateBulkActionsUI();
         });
     };
 
-    const init = () => {
-        applyTheme(localStorage.getItem('theme') || 'light');
-        loadData();
-        processIncomingPurchaseOrder();
+    const init = async () => {
+        checkLoginStatus();
+        await loadData();
+        await processIncomingPurchaseOrder();
         renderAll();
         setupEventListeners();
     };

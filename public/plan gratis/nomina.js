@@ -1,27 +1,6 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Lógica del menú lateral y tema ---
-    const sidebar = document.getElementById('sidebar');
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    if (window.innerWidth >= 768) {
-        sidebar.addEventListener('mouseenter', () => sidebar.classList.add('expanded'));
-        sidebar.addEventListener('mouseleave', () => sidebar.classList.remove('expanded'));
-    }
-    mobileMenuButton.addEventListener('click', (e) => { e.stopPropagation(); sidebar.classList.toggle('expanded'); });
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth < 768 && sidebar.classList.contains('expanded') && !sidebar.contains(e.target)) {
-            sidebar.classList.remove('expanded');
-        }
-    });
+import { initUserSession } from './user-session.js';
 
-    const applyTheme = (theme) => document.documentElement.classList.toggle('dark', theme === 'dark');
-    const themeToggle = document.getElementById('theme-toggle');
-    applyTheme(localStorage.getItem('theme') || 'light');
-    themeToggle.addEventListener('click', () => {
-        const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-        localStorage.setItem('theme', newTheme);
-        applyTheme(newTheme);
-    });
-
+document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. CONFIGURACIÓN INICIAL Y SELECTORES GLOBALES ---
     const dom = {
         tabsContainer: document.getElementById('tabs-container'),
@@ -36,6 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let editingId = null;
     let prenominaCache = [];
     let currentPayrollRecord = null;
+    let isUserLoggedIn = false;
 
     const defaultData = {
         settings: {
@@ -49,7 +29,43 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     // --- 2. LÓGICA DE DATOS Y ESTADO ---
-    const saveData = () => localStorage.setItem('nomina_data_v2', JSON.stringify(nominaData));
+    const api = {
+        async request(method, endpoint, body = null) {
+            try {
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+                const response = await fetch(endpoint, options);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Error desconocido del servidor' }));
+                    throw new Error(errorData.error || `Error en la solicitud: ${response.status}`);
+                }
+                if (response.status === 204) return null;
+                return response.json();
+            } catch (error) {
+                console.error(`API Error (${method} ${endpoint}):`, error);
+                showToast(error.message || 'Error de conexión con el servidor.', 'error');
+                throw error;
+            }
+        },
+        get: (endpoint) => api.request('GET', endpoint),
+        post: (endpoint, body) => api.request('POST', endpoint, body),
+        put: (endpoint, body) => api.request('PUT', endpoint, body),
+        delete: (endpoint) => api.request('DELETE', endpoint)
+    };
+
+    const checkLoginStatus = () => {
+        isUserLoggedIn = !!localStorage.getItem('loggedInUser');
+        console.log('Modo de operación Nómina:', isUserLoggedIn ? 'Base de Datos (Online)' : 'LocalStorage (Offline)');
+    };
+
+    const saveLocalData = () => {
+        const dataToSave = {
+            settings: nominaData.settings,
+            novelties: nominaData.novelties,
+            payrollHistory: nominaData.payrollHistory
+        };
+        localStorage.setItem('nomina_data_v2', JSON.stringify(dataToSave));
+    };
     
     const deepMerge = (target, source) => {
         for (const key in source) {
@@ -61,20 +77,37 @@ document.addEventListener('DOMContentLoaded', () => {
         return target;
     };
 
-    const loadData = () => {
-        const storedData = localStorage.getItem('nomina_data_v2');
-        const parsedData = storedData ? JSON.parse(storedData) : {};
-        const defaultDataCopy = JSON.parse(JSON.stringify(defaultData));
-        nominaData = deepMerge(parsedData, defaultDataCopy);
-        const hrData = JSON.parse(localStorage.getItem('sgsst_data_v5')) || { employees: [] };
-        nominaData.employees = hrData.employees;
+    const loadData = async () => {
+        if (isUserLoggedIn) {
+            try {
+                const initialData = await api.get('/api/nomina/initial-data');
+                const defaultDataCopy = JSON.parse(JSON.stringify(defaultData));
+                
+                nominaData.settings = deepMerge(initialData.settings, defaultDataCopy.settings);
+                nominaData.novelties = initialData.novelties || [];
+                nominaData.payrollHistory = initialData.payrollHistory || [];
+                nominaData.employees = initialData.employees || [];
+
+            } catch (error) {
+                showToast('No se pudieron cargar los datos del servidor.', 'error');
+                nominaData = JSON.parse(JSON.stringify(defaultData));
+            }
+        } else {
+            const storedData = localStorage.getItem('nomina_data_v2');
+            const parsedData = storedData ? JSON.parse(storedData) : {};
+            const defaultDataCopy = JSON.parse(JSON.stringify(defaultData));
+            nominaData = deepMerge(parsedData, defaultDataCopy);
+            
+            const hrData = JSON.parse(localStorage.getItem('sgsst_data_v5')) || { employees: [] };
+            nominaData.employees = hrData.employees;
+        }
     };
 
     // --- 3. FUNCIONES UTILITARIAS ---
     const formatCurrency = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
     const showToast = (message, type = 'success') => {
         const toastId = 'toast-' + Date.now();
-        const bgColor = type === 'success' ? 'bg-green-500' : 'bg-info' ? 'bg-blue-500' : 'bg-red-500';
+        const bgColor = type === 'success' ? 'bg-green-500' : type === 'info' ? 'bg-blue-500' : 'bg-red-500';
         const icon = type === 'success' ? 'check-circle' : 'alert-triangle';
         const toastElement = document.createElement('div');
         toastElement.id = toastId;
@@ -91,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleModal = (modalEl, show) => modalEl.classList.toggle('hidden', !show);
     const getEmployeeName = (id) => (nominaData.employees.find(e => e.id == id) || {name: 'N/A'}).name;
 
-    // --- 4. LÓGICA DE CÁLCULO DE NÓMINA (ACTUALIZADA) ---
+    // --- 4. LÓGICA DE CÁLCULO DE NÓMINA ---
     const calculatePayrollForEmployee = (employee, period) => {
         const S = nominaData.settings;
         let baseSalary = employee.baseSalary;
@@ -153,38 +186,38 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     };
 
-    // --- El resto del archivo (renderizado, etc.) no necesita cambios ---
-    // ...
+    // --- 5. LÓGICA DE RENDERIZADO ---
     const render = () => {
         const activeTab = dom.tabsContainer.querySelector('.tab-btn.active');
         if (activeTab) {
             const moduleKey = activeTab.dataset.target.replace('-section', '');
             renderModule(moduleKey);
+        } else {
+            dom.tabsContainer.querySelector('[data-target="dashboard-section"]').classList.add('active');
+            renderModule('dashboard');
         }
         feather.replace();
     };
 
     const renderModule = (moduleKey) => {
         currentModule = moduleKey;
-        dom.mainContent.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
-        let section = document.getElementById(`${moduleKey}-section`);
+        dom.mainContent.querySelectorAll('section.tab-content').forEach(s => s.classList.add('hidden'));
+        let section;
         
         if (['employees', 'novelties', 'history'].includes(moduleKey)) {
             section = document.getElementById('table-section');
             renderTable(moduleKey);
         } else {
-            const camelCaseKey = moduleKey.replace(/-(\w)/g, (match, letter) => letter.toUpperCase());
+            section = document.getElementById(`${moduleKey}-section`);
+            const camelCaseKey = moduleKey.replace(/-(\w)/g, (_, letter) => letter.toUpperCase());
             const renderFunctionName = `render${camelCaseKey.charAt(0).toUpperCase() + camelCaseKey.slice(1)}Section`;
-            const renderFunction = window[renderFunctionName];
-            if (typeof renderFunction === 'function') {
-                renderFunction();
-            }
+            if (window[renderFunctionName]) window[renderFunctionName]();
         }
         if (section) section.classList.remove('hidden');
     };
     
     window.renderDashboardSection = () => { 
-        const lastPayroll = nominaData.payrollHistory.length > 0 ? nominaData.payrollHistory[nominaData.payrollHistory.length - 1] : { records: [] };
+        const lastPayroll = nominaData.payrollHistory && nominaData.payrollHistory.length > 0 ? nominaData.payrollHistory[nominaData.payrollHistory.length - 1] : { records: [] };
         const totalCost = lastPayroll.records.reduce((sum, r) => sum + r.totalCompanyCost, 0);
         const netPaid = lastPayroll.records.reduce((sum, r) => sum + r.netPay, 0);
         const totalDeductions = lastPayroll.records.reduce((sum, r) => sum + r.totalDeductions, 0);
@@ -259,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div id="report-output" class="mt-6"></div>
             </div>`;
         const periodSelect = document.getElementById('report-period');
-        const reversedHistory = [...nominaData.payrollHistory].reverse();
+        const reversedHistory = [...(nominaData.payrollHistory || [])].reverse();
         periodSelect.innerHTML = reversedHistory.map(h => `<option value="${h.period}">${h.period}</option>`).join('');
     };
     window.renderSettingsSection = () => {
@@ -311,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const moduleConfig = {
-        employees: { title: 'Empleados (Sincronizado desde RRHH)', headers: ['Nombre', 'Cédula', 'Cargo', 'Salario Base', 'Acciones'], noData: 'No hay empleados. Agréguelos desde el módulo de Recursos Humanos.' },
+        employees: { title: 'Empleados', headers: ['Nombre', 'Cédula', 'Cargo', 'Salario Base', 'Acciones'], noData: 'No hay empleados. Agréguelos desde el módulo de Recursos Humanos.' },
         novelties: { title: 'Novedades de Nómina', headers: ['Periodo', 'Empleado', 'Tipo', 'Concepto', 'Valor', 'Acciones'], noData: 'No hay novedades registradas.' },
         history: { title: 'Historial de Nóminas', headers: ['Periodo', 'N° Empleados', 'Costo Total', 'Neto Pagado', 'Acciones'], noData: 'No hay nóminas procesadas.' }
     };
@@ -324,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h2 class="text-2xl font-bold">${config.title}</h2>
                 <button data-action="add" data-module="${moduleKey}" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow hover:bg-blue-700 flex items-center ${moduleKey === 'employees' ? 'hidden' : ''}"><i data-feather="plus" class="mr-2"></i> Agregar</button>
             </div>
-            ${moduleKey === 'employees' ? '<div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p>La gestión de empleados (crear, editar, eliminar) se realiza exclusivamente desde el módulo de <strong>Recursos Humanos</strong> para mantener la consistencia de los datos.</p></div>' : ''}
+            ${moduleKey === 'employees' ? `<div class="bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4" role="alert"><p>Los datos de los empleados se sincronizan desde <strong>Recursos Humanos</strong>. Las acciones de Crear, Editar o Eliminar deben realizarse en dicho módulo.</p></div>` : ''}
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full table-auto">
@@ -336,8 +369,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>`;
 
         const tableBody = document.getElementById('table-body');
-        const dataArray = moduleKey === 'history' ? nominaData.payrollHistory : nominaData[moduleKey];
-        const data = dataArray.slice().reverse();
+        const dataArray = nominaData[moduleKey] || [];
+        const data = (dataArray || []).slice().reverse();
         
         if(data.length === 0) { document.getElementById('no-data-message').classList.remove('hidden'); }
 
@@ -359,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let actions = '';
             if (moduleKey === 'employees') {
-                actions = `<td class="px-4 py-3"><a href="./recursoshumanos.html" class="flex items-center text-blue-600 hover:underline" title="Ver en RRHH"><i data-feather="external-link" class="mr-2"></i> Ver en RRHH</a></td>`;
+                actions = `<td class="px-4 py-3"><a href="./recursoshumanos.html" class="flex items-center text-blue-600 hover:underline" title="Ver en RRHH"><i data-feather="external-link" class="mr-2"></i> Gestionar en RRHH</a></td>`;
             } else if (moduleKey === 'history') {
                 actions = `<td class="px-4 py-3 text-left flex items-center justify-start gap-2"><button data-action="view-history" data-id="${item.period}" class="text-blue-600 hover:text-blue-900" title="Ver Detalle"><i data-feather="eye"></i></button></td>`;
             } else { // Novedades
@@ -435,7 +468,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <tr><td style="${tdStyle}">Intereses s/ Cesantías (12%)</td><td style="${tdRight}">${formatCurrency(record.provisions.interesesCesantias)}</td></tr>
                                 <tr><td style="${tdStyle}">Prima de Servicios (8.33%)</td><td style="${tdRight}">${formatCurrency(record.provisions.prima)}</td></tr>
                                 <tr><td style="${tdStyle}">Vacaciones (4.17%)</td><td style="${tdRight}">${formatCurrency(record.provisions.vacaciones)}</td></tr>
-                                <tr class="font-bold bg-gray-100 dark:bg-gray-700"><td style="${tdStyle}">Subtotal Provisiones</td><td style="${tdRight}">${formatCurrency(record.provisions.total)}</td></tr>
+                                <tr class="font-bold bg-gray-100 dark:bg-gray-700"><td style="${tdRight}">Subtotal Provisiones</td><td style="${tdRight}">${formatCurrency(record.provisions.total)}</td></tr>
                             </table>
                         </div>
                     </div>
@@ -468,27 +501,37 @@ document.addEventListener('DOMContentLoaded', () => {
     
      const openFormModal = (moduleKey, data = {}, onSaveCallback = null) => {
         editingId = data.id || null;
-        const titles = { employees: 'Empleado', novelties: 'Novedad' };
+        const titles = { novelties: 'Novedad' };
         dom.formModal.title.textContent = `${editingId ? 'Editar' : 'Agregar'} ${titles[moduleKey]}`;
         dom.formModal.form.innerHTML = formTemplates[moduleKey](data);
         dom.formModal.form.onsave = onSaveCallback;
         dom.formModal.form.querySelector('#cancel-btn').onclick = () => toggleModal(dom.formModal.el, false);
         toggleModal(dom.formModal.el, true);
     };
-
+    
+    // --- 6. MANEJADORES DE ACCIONES ---
     const handleAdd = (module) => openFormModal(module);
     const handleEdit = (module, id) => {
         const item = nominaData[module].find(i => i.id === parseInt(id));
         if (item) openFormModal(module, item);
     };
-    const handleDelete = (module, idStr) => {
+    const handleDelete = async (module, idStr) => {
         if (module === 'employees') {
              showToast('La gestión de empleados es desde RRHH.', 'error'); return;
         }
         const id = parseInt(idStr);
         if (confirm(`¿Estás seguro de eliminar este registro?`)) {
-            nominaData[module] = nominaData[module].filter(i => i.id !== id);
-            saveData(); render(); showToast('Registro eliminado', 'error');
+            try {
+                if (isUserLoggedIn) {
+                    await api.delete(`/api/nomina/novelties/${id}`);
+                } else {
+                    nominaData[module] = nominaData[module].filter(i => i.id !== id);
+                    saveLocalData();
+                }
+                showToast('Registro eliminado.', 'success');
+                await loadData();
+                render();
+            } catch (e) { /* El error ya se muestra en la capa de api */ }
         }
     };
     const viewHistoryDetail = (period) => {
@@ -536,14 +579,19 @@ document.addEventListener('DOMContentLoaded', () => {
         feather.replace();
     };
     
-    const handleConfirmPayroll = () => {
+    const handleConfirmPayroll = async () => {
         const period = document.getElementById('payroll-period').value;
-        if (nominaData.payrollHistory.some(h => h.period === period)) {
-            return showToast('El periodo seleccionado ya ha sido procesado.', 'error');
+        
+        if (isUserLoggedIn) {
+            await api.post('/api/nomina/history', { period: period, records: prenominaCache });
+        } else {
+            if (nominaData.payrollHistory.some(h => h.period === period)) {
+                return showToast('El periodo seleccionado ya ha sido procesado.', 'error');
+            }
+            nominaData.payrollHistory.push({ period: period, records: prenominaCache });
+            saveLocalData();
         }
 
-        nominaData.payrollHistory.push({ period: period, records: prenominaCache });
-        saveData();
         showToast(`Nómina del periodo ${period} guardada.`);
 
         try {
@@ -574,17 +622,30 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('prenomina-results').classList.add('hidden');
         document.getElementById('instruction-message').classList.remove('hidden');
         prenominaCache = [];
+        await loadData();
+        render();
     };
 
-    const handleSettingsSave = (e) => {
+    const handleSettingsSave = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
+        const newSettings = { ...nominaData.settings };
         for (const [key, value] of formData.entries()) {
             if(e.target.elements[key] && !e.target.elements[key].readOnly) {
-                 nominaData.settings[key] = parseFloat(value);
+                 newSettings[key] = parseFloat(value);
             }
         }
-        saveData(); showToast('Configuración guardada.');
+        
+        try {
+            if (isUserLoggedIn) {
+                await api.post('/api/nomina/settings', newSettings);
+            } else {
+                nominaData.settings = newSettings;
+                saveLocalData();
+            }
+            showToast('Configuración guardada.');
+            await loadData();
+        } catch(e) { /* Error ya mostrado por la capa de api */ }
     };
     const handleGenerateReport = () => {
         const period = document.getElementById('report-period').value;
@@ -596,13 +657,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let totalContributions = 0, totalProvisions = 0;
         
         const rows = history.records.map(r => {
-            const contributions = Object.values(r.employerContributions).reduce((s, v) => s + v, 0);
-            const provisions = Object.values(r.provisions).reduce((s, v) => s + v, 0);
-            totalContributions += contributions;
-            totalProvisions += provisions;
+            totalContributions += r.employerContributions.total;
+            totalProvisions += r.provisions.total;
             return `<tr>
-                <td class="border p-2">${r.employeeName}</td><td class="border p-2 text-right">${formatCurrency(contributions)}</td>
-                <td class="border p-2 text-right">${formatCurrency(provisions)}</td><td class="border p-2 text-right">${formatCurrency(contributions + provisions)}</td>
+                <td class="border p-2">${r.employeeName}</td><td class="border p-2 text-right">${formatCurrency(r.employerContributions.total)}</td>
+                <td class="border p-2 text-right">${formatCurrency(r.provisions.total)}</td><td class="border p-2 text-right">${formatCurrency(r.employerContributions.total + r.provisions.total)}</td>
             </tr>`;
         }).join('');
         
@@ -691,7 +750,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const exportData = () => {
-        const dataStr = JSON.stringify(nominaData, null, 2);
+        const dataToSave = {
+            settings: nominaData.settings,
+            novelties: nominaData.novelties,
+            payrollHistory: nominaData.payrollHistory
+        };
+        const dataStr = JSON.stringify(dataToSave, null, 2);
         const dataBlob = new Blob([dataStr], {type: "application/json"});
         const url = URL.createObjectURL(dataBlob);
         const link = document.createElement('a');
@@ -709,9 +773,13 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (e) => {
             try {
                 const importedData = JSON.parse(e.target.result);
-                if(importedData.settings && importedData.employees && importedData.novelties && importedData.payrollHistory) {
-                    nominaData = importedData;
-                    saveData();
+                if(importedData.settings && importedData.novelties && importedData.payrollHistory) {
+                    if(isUserLoggedIn) {
+                        showToast('La importación masiva solo está disponible en modo offline.', 'error');
+                        return;
+                    }
+                    nominaData = deepMerge(importedData, JSON.parse(JSON.stringify(defaultData)));
+                    saveLocalData();
                     showToast('Datos importados correctamente. La página se recargará.');
                     setTimeout(() => location.reload(), 2000);
                 } else { showToast('El archivo no tiene el formato correcto.', 'error'); }
@@ -750,30 +818,42 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.id === 'import-file-input') importData(e);
     });
 
-    dom.formModal.form.addEventListener('submit', (e) => {
+    dom.formModal.form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(dom.formModal.form);
-        const data = Object.fromEntries(formData.entries());
-        ['baseSalary', 'value'].forEach(key => { if(data[key]) data[key] = parseFloat(data[key]); });
-        ['id', 'employeeId'].forEach(key => { if(data[key]) data[key] = parseInt(data[key]); });
+        let data = Object.fromEntries(formData.entries());
+        ['value'].forEach(key => { if(data[key]) data[key] = parseFloat(data[key]); });
+        ['employeeId'].forEach(key => { if(data[key]) data[key] = parseInt(data[key]); });
         if(data.addsToIBC) data.addsToIBC = data.addsToIBC === 'true';
 
-        if (editingId) {
-            const index = nominaData[currentModule].findIndex(i => i.id == editingId);
-            nominaData[currentModule][index] = { ...nominaData[currentModule][index], ...data };
-            showToast('Registro actualizado');
-        } else {
-            data.id = Date.now();
-            nominaData[currentModule].push(data);
-            showToast('Registro agregado');
-        }
-        
-        saveData();
-        toggleModal(dom.formModal.el, false);
-        if (typeof dom.formModal.form.onsave === 'function') {
-            dom.formModal.form.onsave();
-            dom.formModal.form.onsave = null;
-        } else { render(); }
+        try {
+            if (isUserLoggedIn) {
+                if (editingId) {
+                    await api.put(`/api/nomina/novelties/${editingId}`, data);
+                } else {
+                    await api.post(`/api/nomina/novelties`, data);
+                }
+            } else {
+                if (editingId) {
+                    const index = nominaData[currentModule].findIndex(i => i.id == editingId);
+                    nominaData[currentModule][index] = { ...nominaData[currentModule][index], ...data, id: editingId };
+                } else {
+                    data.id = Date.now();
+                    nominaData[currentModule].push(data);
+                }
+                saveLocalData();
+            }
+            
+            showToast(`Novedad ${editingId ? 'actualizada' : 'agregada'}.`);
+            toggleModal(dom.formModal.el, false);
+            await loadData();
+
+            if (typeof dom.formModal.form.onsave === 'function') {
+                dom.formModal.form.onsave();
+                dom.formModal.form.onsave = null;
+            } else { render(); }
+
+        } catch(e) { /* Error ya mostrado */ }
     });
 
     document.getElementById('main-content').addEventListener('submit', e => {
@@ -785,6 +865,11 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.formModal.closeBtn.onclick = () => toggleModal(dom.formModal.el, false);
     
     // --- 8. INICIALIZACIÓN ---
-    const init = () => { loadData(); render(); };
+    const init = async () => { 
+        checkLoginStatus();
+        // initUserSession es llamado por sidebar.js, no es necesario aquí.
+        await loadData();
+        render();
+    };
     init();
 });

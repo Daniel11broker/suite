@@ -1,27 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Lógica del menú lateral y tema ---
-    const sidebar = document.getElementById('sidebar');
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    if (window.innerWidth >= 768) {
-        sidebar.addEventListener('mouseenter', () => sidebar.classList.add('expanded'));
-        sidebar.addEventListener('mouseleave', () => sidebar.classList.remove('expanded'));
-    }
-    mobileMenuButton.addEventListener('click', (e) => { e.stopPropagation(); sidebar.classList.toggle('expanded'); });
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth < 768 && sidebar.classList.contains('expanded') && !sidebar.contains(e.target)) {
-            sidebar.classList.remove('expanded');
-        }
-    });
-    
-    const applyTheme = (theme) => document.documentElement.classList.toggle('dark', theme === 'dark');
-    const themeToggle = document.getElementById('theme-toggle');
-    applyTheme(localStorage.getItem('theme') || 'light');
-    themeToggle.addEventListener('click', () => {
-        const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-        localStorage.setItem('theme', newTheme);
-        applyTheme(newTheme);
-    });
-
+document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. CONFIG & GLOBALS ---
     const dom = {
         mainContent: document.getElementById('main-content'),
@@ -38,38 +15,68 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentFormType = 'employee';
     let currentSearchTerm = '';
     let currentSort = { key: 'name', order: 'asc' };
+    let isUserLoggedIn = false;
 
-    // --- 2. DATA HANDLING (UNIFIED) ---
-    const loadAllEmployeeData = () => {
-        const sstData = JSON.parse(localStorage.getItem('sgsst_data_v5')) || { employees: [] };
-        employeesData = sstData.employees.map(emp => ({
-            ...emp,
-            department: emp.department || 'No Asignado',
-            status: emp.status || 'Activo',
-            baseSalary: emp.baseSalary || 0,
-            contractType: emp.contractType || 'Término Indefinido',
-            contractStart: emp.contractStart || '',
-            vacationDays: emp.vacationDays === undefined ? 15 : emp.vacationDays,
-            documents: emp.documents || [],
-            leaves: emp.leaves || []
-        }));
+    // --- 2. DATA HANDLING (UNIFIED & ONLINE/OFFLINE) ---
+    const api = {
+        async request(method, endpoint, body = null) {
+            try {
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+                const response = await fetch(endpoint, options);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Error desconocido del servidor' }));
+                    throw new Error(errorData.error || `Error en la solicitud: ${response.status}`);
+                }
+                if (response.status === 204) return null;
+                return response.json();
+            } catch (error) {
+                console.error(`API Error (${method} ${endpoint}):`, error);
+                showToast(error.message, 'error');
+                throw error;
+            }
+        },
+        get: (endpoint) => api.request('GET', endpoint),
+        post: (endpoint, body) => api.request('POST', endpoint, body),
+        put: (endpoint, body) => api.request('PUT', endpoint, body),
+        delete: (endpoint) => api.request('DELETE', endpoint)
     };
 
-    const saveAllEmployeeData = () => {
+    const checkLoginStatus = () => {
+        isUserLoggedIn = !!localStorage.getItem('loggedInUser');
+        console.log('Modo de operación RRHH:', isUserLoggedIn ? 'Base de Datos (Online)' : 'LocalStorage (Offline)');
+    };
+
+    const loadAllEmployeeData = async () => {
+        if (isUserLoggedIn) {
+            try {
+                employeesData = await api.get('/api/rrhh/employees');
+            } catch (error) {
+                console.error("Fallo al cargar datos de la API de RRHH.", error);
+                employeesData = [];
+            }
+        } else {
+            const sstData = JSON.parse(localStorage.getItem('sgsst_data_v5')) || { employees: [] };
+            employeesData = sstData.employees.map(emp => ({
+                ...emp,
+                department: emp.department || 'No Asignado',
+                status: emp.status || 'Activo',
+                baseSalary: emp.baseSalary || 0,
+                contractType: emp.contractType || 'Término Indefinido',
+                contractStart: emp.contractStart || '',
+                vacationDays: emp.vacationDays === undefined ? 15 : emp.vacationDays,
+                documents: emp.documents || [],
+                leaves: emp.leaves || []
+            }));
+        }
+    };
+
+    const saveLocalData = () => {
         let sstDataToSave = { employees: employeesData };
         localStorage.setItem('sgsst_data_v5', JSON.stringify(sstDataToSave));
-
-        let nominaDataToSave = { 
-            employees: employeesData.map(emp => ({
-                id: emp.id, name: emp.name, idNumber: emp.idNumber,
-                position: emp.position, baseSalary: emp.baseSalary
-            }))
-        };
-        const existingNominaData = JSON.parse(localStorage.getItem('nomina_data_v1')) || {};
-        localStorage.setItem('nomina_data_v1', JSON.stringify({ ...existingNominaData, ...nominaDataToSave }));
     };
 
-    // --- 3. UTILITIES & PAYROLL ---
+    // --- 3. UTILITIES & PAYROLL INTEGRATION ---
     const formatCurrency = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value || 0);
     const showToast = (message, type = 'success') => {
         const toastColors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500' };
@@ -84,8 +91,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 4000);
     };
     const toggleModal = (show) => {
-        if (show) dom.formModal.el.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
-        else {
+        if (show) {
+            dom.formModal.el.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
+        } else {
             dom.formModal.el.classList.add('opacity-0', 'scale-95');
             setTimeout(() => dom.formModal.el.classList.add('pointer-events-none'), 300);
         }
@@ -101,13 +109,20 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- 4. CORE ACTIONS ---
-    const deleteEmployee = (employeeId) => {
+    const deleteEmployee = async (employeeId) => {
         if (confirm('¿Estás seguro de que quieres eliminar a este empleado? Esta acción no se puede deshacer.')) {
-            employeesData = employeesData.filter(emp => emp.id !== employeeId);
-            saveAllEmployeeData();
-            showToast('Empleado eliminado correctamente.', 'success');
-            currentView = 'list';
-            render();
+            try {
+                if (isUserLoggedIn) {
+                    await api.delete(`/api/rrhh/employees/${employeeId}`);
+                } else {
+                    employeesData = employeesData.filter(emp => emp.id !== employeeId);
+                    saveLocalData();
+                }
+                showToast('Empleado eliminado correctamente.', 'success');
+                currentView = 'list';
+                await loadAllEmployeeData();
+                render();
+            } catch(e) { /* Error ya mostrado por la capa de API */ }
         }
     };
     
@@ -173,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let content = renderDashboardKPIs();
         content += `<div class="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div class="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-                <div class="relative w-full md:w-auto"><input type="text" id="search-input" class="w-full p-2 pl-10 border rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="Buscar..."><i data-feather="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i></div>
+                <div class="relative w-full md:w-auto"><input type="text" id="search-input" class="w-full p-2 pl-10 border rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="Buscar..." value="${currentSearchTerm}"><i data-feather="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i></div>
                 <div class="flex items-center gap-2 w-full md:w-auto">
                     <select id="sort-select" class="w-full p-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"><option value="name-asc">Nombre (A-Z)</option><option value="name-desc">Nombre (Z-A)</option><option value="salary-desc">Salario (Mayor a Menor)</option><option value="salary-asc">Salario (Menor a Mayor)</option></select>
                     <button id="export-csv-btn" class="p-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 dark:border-gray-600" title="Exportar a CSV"><i data-feather="download"></i></button>
@@ -190,8 +205,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         filteredEmployees.sort((a, b) => {
             const { key, order } = currentSort;
-            const valA = key === 'name' ? a[key].toLowerCase() : a[key];
-            const valB = key === 'name' ? b[key].toLowerCase() : b[key];
+            const valA = key === 'name' ? a[key].toLowerCase() : a.baseSalary;
+            const valB = key === 'name' ? b[key].toLowerCase() : b.baseSalary;
             if (valA < valB) return order === 'asc' ? -1 : 1;
             if (valA > valB) return order === 'asc' ? 1 : -1;
             return 0;
@@ -257,8 +272,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.getElementById('back-to-list').addEventListener('click', () => { currentView = 'list'; render(); });
         document.getElementById('delete-employee-btn').addEventListener('click', () => deleteEmployee(emp.id));
-        document.querySelectorAll('.tab-btn').forEach(tab => tab.addEventListener('click', () => {
-            document.querySelectorAll('.tab-btn').forEach(t => {
+        document.querySelectorAll('#profile-tabs .tab-btn').forEach(tab => tab.addEventListener('click', () => {
+            document.querySelectorAll('#profile-tabs .tab-btn').forEach(t => {
                 t.classList.remove('active', 'border-blue-600', 'text-blue-600');
                 t.classList.add('border-transparent', 'text-gray-500', 'dark:text-gray-400');
             });
@@ -343,22 +358,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="flex justify-end mt-6 pt-4 border-t dark:border-gray-700"><button type="button" class="bg-gray-300 dark:bg-gray-600 py-2 px-4 rounded mr-2 hover:bg-gray-400 dark:hover:bg-gray-500" id="cancel-btn">Cancelar</button><button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700">Guardar</button></div>`,
         document: (data = {}) => `
             <input type="hidden" name="employeeId" value="${data.id}">
-            <div class="space-y-4">
-                <h4 class="text-lg font-semibold">Información de Contacto</h4>
-                <div><label class="block text-sm font-medium">Dirección de Residencia</label><input type="text" name="address" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required></div>
-                <div><label class="block text-sm font-medium">Teléfono de Contacto</label><input type="tel" name="phone" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required></div>
-                <div><label class="block text-sm font-medium">Correo Electrónico Personal</label><input type="email" name="email" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required></div>
-
-                <h4 class="text-lg font-semibold border-t pt-4 mt-4">Perfil Profesional</h4>
-                <div><label class="block text-sm font-medium">Resumen Profesional</label><textarea name="profileSummary" rows="4" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" placeholder="Describa brevemente su perfil y objetivos profesionales..."></textarea></div>
-
-                <h4 class="text-lg font-semibold border-t pt-4 mt-4">Experiencia Laboral</h4>
-                <div><textarea name="workExperience" rows="6" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" placeholder="Liste su experiencia laboral previa, incluyendo cargo, empresa y fechas."></textarea></div>
-
-                <h4 class="text-lg font-semibold border-t pt-4 mt-4">Formación Académica</h4>
-                <div><textarea name="education" rows="4" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" placeholder="Liste sus títulos y estudios."></textarea></div>
-            </div>
-            <div class="flex justify-end mt-6 pt-4 border-t dark:border-gray-700"><button type="button" class="bg-gray-300 dark:bg-gray-600 py-2 px-4 rounded mr-2" id="cancel-btn">Cancelar</button><button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded">Generar y Descargar PDF</button></div>`,
+            <p class="text-sm mb-4">Esta herramienta genera una Hoja de Vida en formato PDF con la información proporcionada.</p>
+            <div><label class="block text-sm font-medium">Dirección de Residencia</label><input type="text" name="address" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required></div>
+            <div><label class="block text-sm font-medium">Teléfono de Contacto</label><input type="tel" name="phone" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required></div>
+            <div><label class="block text-sm font-medium">Correo Electrónico Personal</label><input type="email" name="email" class="mt-1 block w-full border rounded p-2 dark:bg-gray-700 dark:border-gray-600" required></div>
+            <div class="flex justify-end mt-6 pt-4 border-t dark:border-gray-700"><button type="button" class="bg-gray-300 dark:bg-gray-600 py-2 px-4 rounded mr-2" id="cancel-btn">Cancelar</button><button type="submit" class="bg-blue-600 text-white py-2 px-4 rounded">Generar PDF</button></div>`,
         leave: (data = {}) => `
             <input type="hidden" name="employeeId" value="${data.id}">
             <div class="space-y-4">
@@ -381,11 +385,16 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.openFormModal = (type, id = null) => {
+        const isEdit = id && type === 'employee';
         editingId = id;
         currentFormType = type;
-        const data = id ? employeesData.find(e => e.id == id) : {};
+        const data = id ? employeesData.find(e => e.id == id) : { id: id };
+        if (id && !data) {
+            return showToast('No se encontró el empleado para editar.', 'error');
+        }
+        
         const titles = { employee: 'Empleado', document: 'Generar Hoja de Vida', leave: 'Registrar Ausencia' };
-        dom.formModal.title.textContent = `${id && type === 'employee' ? 'Editar' : 'Generar'} ${titles[type]}`;
+        dom.formModal.title.textContent = `${isEdit ? 'Editar' : (type === 'employee' ? 'Nuevo' : '')} ${titles[type]}`;
         dom.formModal.form.innerHTML = formTemplates[type](data);
         dom.formModal.form.querySelector('#cancel-btn').onclick = () => toggleModal(false);
         toggleModal(true);
@@ -396,123 +405,103 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const formData = new FormData(dom.formModal.form);
         const data = Object.fromEntries(formData.entries());
-        const employeeId = parseInt(data.employeeId || editingId);
-        const employeeIndex = employeesData.findIndex(e => e.id === employeeId);
         
-        if (currentFormType === 'document') {
-            const emp = employeesData[employeeIndex];
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            // --- Estructura del PDF ---
-            doc.setFontSize(18);
-            doc.setFont(undefined, 'bold');
-            doc.text(emp.name, 20, 20);
-
-            doc.setFontSize(11);
-            doc.setFont(undefined, 'normal');
-            doc.text(`${data.address} | ${data.phone} | ${data.email}`, 20, 28);
-            doc.text(`C.C. ${emp.idNumber}`, 20, 34);
-
-            let yPosition = 45;
-
-            // Perfil Profesional
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
-            doc.text("Perfil Profesional", 20, yPosition);
-            yPosition += 7;
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
-            let profileLines = doc.splitTextToSize(data.profileSummary, 170);
-            doc.text(profileLines, 20, yPosition);
-            yPosition += profileLines.length * 5 + 10;
-
-            // Experiencia Laboral
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
-            doc.text("Experiencia Laboral", 20, yPosition);
-            yPosition += 7;
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
-            let experienceLines = doc.splitTextToSize(data.workExperience, 170);
-            doc.text(experienceLines, 20, yPosition);
-            yPosition += experienceLines.length * 5 + 10;
-
-            // Formación Académica
-            doc.setFontSize(14);
-            doc.setFont(undefined, 'bold');
-            doc.text("Formación Académica", 20, yPosition);
-            yPosition += 7;
-            doc.setFontSize(10);
-            doc.setFont(undefined, 'normal');
-            let educationLines = doc.splitTextToSize(data.education, 170);
-            doc.text(educationLines, 20, yPosition);
-            
-            doc.save(`Hoja_de_Vida_${emp.name.replace(/ /g, '_')}.pdf`);
-
-            // Añadir un registro del documento generado (sin guardar el PDF en sí)
-            const newDocRecord = { 
-                id: Date.now(), 
-                name: `Hoja de Vida - ${emp.name}`, 
-                type: 'Hoja de Vida', 
-                uploadDate: new Date().toISOString()
-            };
-            if (employeeIndex > -1) {
-                if (!employeesData[employeeIndex].documents) {
-                    employeesData[employeeIndex].documents = [];
+        try {
+            if (currentFormType === 'employee') {
+                data.baseSalary = parseFloat(data.baseSalary) || 0;
+                if (editingId) {
+                    const index = employeesData.findIndex(e => e.id == editingId);
+                    const updatedEmployee = { ...employeesData[index], ...data };
+                    if (isUserLoggedIn) {
+                        await api.put(`/api/rrhh/employees/${editingId}`, updatedEmployee);
+                    } else {
+                        employeesData[index] = updatedEmployee;
+                        saveLocalData();
+                    }
+                    showToast('Empleado actualizado.', 'success');
+                } else {
+                    data.documents = [];
+                    data.leaves = [];
+                    if (isUserLoggedIn) {
+                        await api.post('/api/rrhh/employees', data);
+                    } else {
+                        data.id = Date.now();
+                        employeesData.push(data);
+                        saveLocalData();
+                    }
+                    showToast('Empleado creado.', 'success');
                 }
-                employeesData[employeeIndex].documents.push(newDocRecord);
-                showToast('Hoja de Vida en PDF generada con éxito.');
-            }
-        } else if (currentFormType === 'leave') {
-            if (employeeIndex > -1) {
-                const startDate = new Date(data.startDate);
-                const endDate = new Date(data.endDate);
-                const days = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
-                
-                const newLeave = { 
-                    id: Date.now(), type: data.type, startDate: data.startDate, endDate: data.endDate,
-                    days: days, isPaid: data.isPaid === 'on' 
-                };
-                employeesData[employeeIndex].leaves.push(newLeave);
-                showToast('Ausencia registrada con éxito.');
-
-                if (!newLeave.isPaid) {
-                    createPayrollNovelty({
-                        period: data.startDate.substring(0, 7),
-                        employeeId: employeeId,
-                        type: 'deduccion',
-                        concept: `Deducción por ${days} día(s) de licencia no remunerada`,
-                        value: (employeesData[employeeIndex].baseSalary / 30) * days,
-                        addsToIBC: false
-                    });
-                }
-            }
-        } else { // Employee form
-            data.baseSalary = parseFloat(data.baseSalary);
-            if (editingId) {
-                employeesData[employeeIndex] = { ...employeesData[employeeIndex], ...data, id: editingId };
-                showToast('Empleado actualizado.', 'success');
             } else {
-                data.id = Date.now();
-                data.documents = []; data.leaves = [];
-                employeesData.push(data);
-                showToast('Empleado creado.', 'success');
+                const employeeId = parseInt(data.employeeId);
+                const employeeIndex = employeesData.findIndex(e => e.id === employeeId);
+                if (employeeIndex === -1) return showToast('Empleado no encontrado', 'error');
+                const employeeToUpdate = { ...employeesData[employeeIndex] };
+
+                if (currentFormType === 'document') {
+                    // La lógica para generar PDF se mantiene en el cliente
+                    const { jsPDF } = window.jspdf;
+                    const doc = new jsPDF();
+                    doc.text(`Hoja de Vida de ${employeeToUpdate.name}`, 20, 20);
+                    doc.text(`Dirección: ${data.address}`, 20, 30);
+                    doc.text(`Teléfono: ${data.phone}`, 20, 40);
+                    doc.text(`Email: ${data.email}`, 20, 50);
+                    doc.save(`Hoja_de_Vida_${employeeToUpdate.name.replace(/ /g, '_')}.pdf`);
+                    
+                    showToast('Hoja de Vida en PDF generada.');
+                    const newDocRecord = { id: Date.now(), name: `Hoja de Vida`, type: 'Hoja de Vida', uploadDate: new Date().toISOString() };
+                    if (!employeeToUpdate.documents) employeeToUpdate.documents = [];
+                    employeeToUpdate.documents.push(newDocRecord);
+                } else if (currentFormType === 'leave') {
+                    const startDate = new Date(data.startDate);
+                    const endDate = new Date(data.endDate);
+                    const days = Math.round((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                    const newLeave = { id: Date.now(), type: data.type, startDate: data.startDate, endDate: data.endDate, days: days, isPaid: data.isPaid === 'on' };
+                    if (!employeeToUpdate.leaves) employeeToUpdate.leaves = [];
+                    employeeToUpdate.leaves.push(newLeave);
+                    showToast('Ausencia registrada.');
+
+                    if (!newLeave.isPaid && !isUserLoggedIn) {
+                        createPayrollNovelty({
+                            period: data.startDate.substring(0, 7),
+                            employeeId: employeeId,
+                            type: 'deduccion',
+                            concept: `Deducción por ${days} día(s) de licencia no remunerada`,
+                            value: (employeeToUpdate.baseSalary / 30) * days,
+                            addsToIBC: false
+                        });
+                    }
+                }
+                
+                if (isUserLoggedIn) {
+                    await api.put(`/api/rrhh/employees/${employeeId}`, employeeToUpdate);
+                } else {
+                    employeesData[employeeIndex] = employeeToUpdate;
+                    saveLocalData();
+                }
             }
-        }
-        
-        saveAllEmployeeData();
-        render();
-        toggleModal(false);
+            
+            await loadAllEmployeeData();
+            render();
+            toggleModal(false);
+        } catch (e) { /* El error ya se muestra en la capa de API */ }
     });
 
-    window.deleteDocument = (employeeId, docId) => {
+    window.deleteDocument = async (employeeId, docId) => {
          if (confirm('¿Estás seguro de eliminar este registro de documento?')) {
             const empIndex = employeesData.findIndex(e => e.id === employeeId);
             if(empIndex > -1) {
-                employeesData[empIndex].documents = employeesData[empIndex].documents.filter(d => d.id !== docId);
-                saveAllEmployeeData();
-                renderTabContent('documents', employeesData[empIndex]);
+                const employeeToUpdate = { ...employeesData[empIndex] };
+                employeeToUpdate.documents = employeeToUpdate.documents.filter(d => d.id !== docId);
+
+                if (isUserLoggedIn) {
+                    await api.put(`/api/rrhh/employees/${employeeId}`, employeeToUpdate);
+                } else {
+                    employeesData[empIndex] = employeeToUpdate;
+                    saveLocalData();
+                }
+                
+                await loadAllEmployeeData();
+                renderTabContent('documents', employeesData.find(e => e.id === employeeId));
                 showToast('Registro de documento eliminado.');
             }
          }
@@ -527,8 +516,9 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- 7. INITIALIZATION ---
-    const init = () => {
-        loadAllEmployeeData();
+    const init = async () => {
+        checkLoginStatus();
+        await loadAllEmployeeData();
         render();
     };
     

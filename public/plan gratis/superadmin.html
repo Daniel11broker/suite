@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/feather-icons"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="plan gratis/main.css">
+    <link rel="stylesheet" href="./main.css">
     <script>
         tailwind.config = { darkMode: 'class' }
     </script>
@@ -24,6 +24,11 @@
         </div>
         <div class="flex-grow overflow-y-auto overflow-x-hidden">
             <div class="flex flex-col py-4 space-y-1">
+                
+                <a href="./inicio.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Ir a Inicio">
+                    <i data-feather="home" class="h-6 w-6 flex-shrink-0"></i>
+                    <span class="sidebar-text">Inicio</span>
+                </a>
                 <a href="./superadmin.html" class="flex items-center h-12 px-6 text-blue-600 bg-blue-50 dark:bg-gray-700 dark:text-blue-300 font-semibold" title="Gestión de Admins">
                     <i data-feather="users" class="h-6 w-6 flex-shrink-0"></i>
                     <span class="sidebar-text">Administradores</span>
@@ -128,6 +133,6 @@
     
     <div id="toast-container"></div>
     
-    <script src="superadmin.js" type="module"></script>
+    <script src="./superadmin.js" type="module"></script>
 </body>
 </html>

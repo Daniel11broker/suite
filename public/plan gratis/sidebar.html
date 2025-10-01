@@ -1,0 +1,25 @@
+<nav id="sidebar" class="fixed top-0 left-0 h-full bg-white dark:bg-gray-800 shadow-lg z-50 flex flex-col transition-all overflow-hidden">
+    <div class="flex items-center justify-center h-16 border-b dark:border-gray-700 flex-shrink-0 px-4">
+        <a href="./inicio.html" class="flex items-center space-x-3">
+            <i data-feather="briefcase" class="h-8 w-8 text-blue-600 flex-shrink-0"></i>
+            <span class="sidebar-text text-xl font-bold text-gray-800 dark:text-white">Suite Empresarial</span>
+        </a>
+    </div>
+
+    <div id="sidebar-nav-container" class="flex-grow overflow-y-auto overflow-x-hidden">
+        </div>
+
+    <div class="flex-shrink-0 border-t dark:border-gray-700 p-2">
+        <button id="configure-sidebar-btn" class="flex items-center w-full h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Configurar Módulos">
+            <i data-feather="settings" class="h-6 w-6 flex-shrink-0"></i>
+            <span class="sidebar-text">Ajustes</span>
+        </button>
+
+        <div class="flex justify-center py-2">
+            <button id="theme-toggle" 
+                    class="flex items-center justify-center w-12 h-12 rounded-full text-gray-500 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors duration-200" 
+                    title="Cambiar Tema">
+                </button>
+        </div>
+    </div>
+</nav>

@@ -28,6 +28,7 @@ import { handlePosCheckout } from './posHandler.js';
 import { handleSstRequest } from './sgSstHandler.js';
 import { handleVentasRequest } from './ventasHandler.js';
 import { handleAuditoriasRequest } from './auditoriasHandler.js';
+import { handleRrhhRequest } from './rrhhHandler.js'; 
 
 
 // Exportamos las clases de Durable Objects para que Wrangler las reconozca
@@ -100,6 +101,7 @@ export default {
     if (pathname.startsWith('/api/sg-sst')) return handleSstRequest(request, env);
     if (pathname.startsWith('/api/ventas')) return handleVentasRequest(request, env);
     if (pathname.startsWith('/api/auditorias')) return handleAuditoriasRequest(request, env);
+    if (pathname.startsWith('/api/rrhh')) return handleRrhhRequest(request, env);
     
     // 3. Rutas de bajo nivel (KV y R2)
     if (pathname.startsWith('/kv/')) return handleKvRequest(request, env);

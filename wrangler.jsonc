@@ -6,14 +6,14 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "suite-empresarial",
 	"main": "src/index.js",
-	"compatibility_date": "2025-09-24",
+	"compatibility_date": "2025-09-29",
 	"compatibility_flags": [
 		"nodejs_compat",
 		"global_fetch_strictly_public"
 	],
 	"assets": {
 		// The path to the directory containing the `index.html` file to be served at `/`
-		"directory": "./public"
+		"directory": "./public/plan gratis"
 	},
 	"observability": {
 		"enabled": true
@@ -47,7 +47,7 @@
         ]
     },
     "migrations": [
-      { "tag": "v1", "new_classes": ["ChatLobby", "ChatSession"] }
+      { "tag": "v1", "new_sqlite_classes": ["ChatLobby", "ChatSession"] }
     ]
 
 	/**

@@ -183,3 +183,159 @@ button:disabled {
         justify-content: space-between;
     }
 }
+
+/* === INICIO: NUEVOS ESTILOS PARA WIDGETS DE CHAT === */
+.widget-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.floating-button {
+    width: 4rem; /* 64px */
+    height: 4rem; /* 64px */
+    border-radius: 9999px; /* rounded-full */
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* shadow-lg */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease-in-out;
+}
+
+.floating-button:hover {
+    transform: scale(1.1);
+}
+
+.chat-window {
+    position: absolute;
+    bottom: 5rem; /* 80px, para que aparezca encima del botón */
+    right: 0;
+    width: 22rem; /* w-88, un poco más ancho */
+    height: 70vh;
+    max-height: 500px;
+    background-color: white;
+    border-radius: 0.5rem; /* rounded-lg */
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* shadow-xl */
+    display: flex;
+    flex-direction: column;
+    transform-origin: bottom right;
+    animation: slide-in 0.3s ease-out;
+    border: 1px solid #e5e7eb; /* Borde sutil */
+}
+.dark .chat-window {
+    background-color: #1f2937; /* gray-800 */
+    border-color: #374151; /* gray-700 */
+}
+
+@keyframes slide-in {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.chat-header {
+    padding: 0.75rem; /* p-3 */
+    background-color: #f3f4f6; /* gray-100 */
+    border-bottom: 1px solid #e5e7eb; /* border-b */
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    font-weight: 700; /* font-bold */
+    text-align: center;
+}
+.dark .chat-header {
+    background-color: #374151; /* gray-700 */
+    border-color: #4b5563; /* gray-600 */
+}
+
+.chat-body {
+    flex-grow: 1;
+    padding: 0.75rem; /* p-3 */
+    overflow-y: auto;
+}
+
+.chat-footer {
+    padding: 0.5rem; /* p-2 */
+    border-top: 1px solid #e5e7eb; /* border-t */
+}
+.dark .chat-footer {
+    border-color: #4b5563; /* gray-600 */
+}
+
+.chat-input {
+    flex-grow: 1;
+    border: 1px solid #d1d5db;
+    border-radius: 0.375rem; /* rounded-md */
+    padding: 0.5rem; /* p-2 */
+    font-size: 0.875rem; /* text-sm */
+}
+.dark .chat-input {
+    background-color: #374151; /* gray-700 */
+    border-color: #4b5563; /* gray-600 */
+}
+
+.chat-send-button {
+    background-color: #3b82f6; /* blue-600 */
+    color: white;
+    padding: 0.5rem; /* p-2 */
+    border-radius: 0.5rem; /* rounded-lg */
+}
+.chat-send-button:hover {
+    background-color: #2563eb; /* hover:bg-blue-700 */
+}
+
+/* Estilos para mensajes de IA */
+.ai-message {
+    max-width: 90%;
+    margin-bottom: 0.75rem;
+}
+.ai-message.user {
+    margin-left: auto;
+    text-align: right;
+}
+.ai-message-bubble {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.75rem;
+    display: inline-block;
+    text-align: left;
+}
+.ai-message.user .ai-message-bubble {
+    background-color: #3b82f6; /* blue-600 */
+    color: white;
+}
+.ai-message.assistant .ai-message-bubble {
+    background-color: #e5e7eb; /* gray-200 */
+}
+.dark .ai-message.assistant .ai-message-bubble {
+    background-color: #374151; /* gray-700 */
+}
+/* === FIN: NUEVOS ESTILOS PARA WIDGETS DE CHAT === */
+
+/* === INICIO: NUEVOS ESTILOS PARA POSICIÓN DE BOTONES DE CHAT === */
+
+/* Contenedor principal que se fija a la pantalla */
+#chat-buttons-container {
+    position: fixed;
+    bottom: 1.25rem; /* 20px */
+    right: 1.25rem; /* 20px */
+    z-index: 50;
+    width: 4rem;   /* Ancho de un botón */
+    height: 9rem;  /* Altura para ambos botones con espacio */
+}
+
+/* Hacemos que los wrappers de los widgets se posicionen de forma absoluta
+   dentro del nuevo contenedor principal */
+#chat-buttons-container .widget-wrapper {
+    position: absolute;
+    right: 0;
+}
+
+/* Posiciona el primer wrapper (Soporte/Verde) en la parte inferior */
+#chat-buttons-container .widget-wrapper:first-child {
+    bottom: 0;
+}
+
+/* Posiciona el segundo wrapper (IA/Púrpura) en la parte superior */
+#chat-buttons-container .widget-wrapper:last-child {
+    top: 0;
+}
+
+/* === FIN: NUEVOS ESTILOS PARA POSICIÓN DE BOTONES DE CHAT === */
