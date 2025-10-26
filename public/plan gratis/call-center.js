@@ -1,40 +1,6 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- LÓGICA DEL NUEVO MENÚ LATERAL ---
-    const sidebar = document.getElementById('sidebar');
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    const mainContentWrapper = document.getElementById('main-content-wrapper');
-
-    const expandSidebar = () => {
-        if (!sidebar.classList.contains('expanded')) {
-            sidebar.classList.add('expanded');
-        }
-    };
-    const collapseSidebar = () => {
-        if (sidebar.classList.contains('expanded')) {
-            sidebar.classList.remove('expanded');
-        }
-    };
-
-    if (window.innerWidth >= 768) {
-        sidebar.addEventListener('mouseenter', expandSidebar);
-        sidebar.addEventListener('mouseleave', collapseSidebar);
-    }
-    mobileMenuButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        sidebar.classList.toggle('expanded');
-    });
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth < 768 && sidebar.classList.contains('expanded')) {
-            if (!sidebar.contains(e.target)) {
-                collapseSidebar();
-            }
-        }
-    });
-
-
+document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. CONFIGURACIÓN INICIAL Y SELECTORES ---
     const dom = {
-        themeToggle: document.getElementById('theme-toggle'),
         tabsContainer: document.getElementById('tabs-container'),
         mainContent: document.getElementById('main-content'),
         dashboard: {
@@ -72,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentModule = '';
     let agentCallChartInstance = null;
     let callTypeChartInstance = null;
+    let isUserLoggedIn = false;
     
     const defaultData = {
         settings: {
@@ -82,12 +49,52 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- 2. LÓGICA DE DATOS Y ESTADO ---
-    const saveData = () => localStorage.setItem('call_center_data_v1', JSON.stringify(callCenterData));
-    const loadData = () => {
-        const data = localStorage.getItem('call_center_data_v1');
-        callCenterData = data ? JSON.parse(data) : JSON.parse(JSON.stringify(defaultData));
-        for (const key in defaultData) {
-            if (!callCenterData.hasOwnProperty(key)) callCenterData[key] = defaultData[key];
+    const api = {
+        async request(method, endpoint, body = null) {
+            try {
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+                const response = await fetch(endpoint, options);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+                    throw new Error(errorData.error || `Error: ${response.status}`);
+                }
+                if (response.status === 204) return null;
+                return response.json();
+            } catch (error) {
+                showToast(error.message, 'error');
+                throw error;
+            }
+        },
+        get: (endpoint) => api.request('GET', endpoint),
+        post: (endpoint, body) => api.request('POST', endpoint, body),
+        put: (endpoint, body) => api.request('PUT', endpoint, body),
+        delete: (endpoint) => api.request('DELETE', endpoint)
+    };
+    
+    const checkLoginStatus = () => {
+        isUserLoggedIn = !!localStorage.getItem('loggedInUser');
+        console.log('Modo de operación Call Center:', isUserLoggedIn ? 'Base de Datos (Online)' : 'LocalStorage (Offline)');
+    };
+    
+    const saveLocalData = () => localStorage.setItem('call_center_data_v1', JSON.stringify(callCenterData));
+    
+    const loadData = async () => {
+        if (isUserLoggedIn) {
+            try {
+                const initialData = await api.get('/api/call-center/initial-data');
+                // Combina los datos del servidor con los por defecto para asegurar que 'settings' siempre exista
+                callCenterData = { ...JSON.parse(JSON.stringify(defaultData)), ...initialData };
+            } catch(e) {
+                callCenterData = JSON.parse(JSON.stringify(defaultData));
+            }
+        } else {
+            const data = localStorage.getItem('call_center_data_v1');
+            callCenterData = data ? JSON.parse(data) : JSON.parse(JSON.stringify(defaultData));
+            // Asegura que todas las propiedades existan
+            for (const key in defaultData) {
+                if (!callCenterData.hasOwnProperty(key)) callCenterData[key] = defaultData[key];
+            }
         }
     };
     
@@ -123,14 +130,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 4. RENDERIZADO Y ACTUALIZACIÓN DE UI ---
     const render = () => {
-        updateDashboard();
-        if(document.getElementById('settings-section') && !document.getElementById('settings-section').classList.contains('hidden')) {
-            renderSettings();
+        const activeTab = dom.tabsContainer.querySelector('.tab-btn.active');
+        if (!activeTab) return;
+        const targetId = activeTab.dataset.target;
+        currentModule = targetId.replace('-section', '');
+
+        dom.mainContent.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+        
+        if (moduleConfig[currentModule]) {
+            openModuleTable(currentModule);
+        } else {
+            document.getElementById(targetId).classList.remove('hidden');
+            if (currentModule === 'dashboard') updateDashboard();
+            if (currentModule === 'settings') renderSettings();
         }
-        feather.replace();
     };
     
-    // ... (El resto del código de renderizado y lógica de la aplicación se mantiene igual)
     const updateDashboard = () => {
         const todayStr = new Date().toISOString().slice(0, 10);
         const callsToday = callCenterData.calls.filter(c => c.dateTime.startsWith(todayStr));
@@ -150,22 +165,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const textColor = isDark ? '#e5e7eb' : '#374151';
 
         const callsByAgent = {};
-        callCenterData.agents.forEach(a => { callsByAgent[a.id] = 0; });
+        (callCenterData.agents || []).forEach(a => { callsByAgent[a.id] = 0; });
         callsToday.forEach(c => { if(callsByAgent.hasOwnProperty(c.agentId)) callsByAgent[c.agentId]++; });
 
         if (agentCallChartInstance) agentCallChartInstance.destroy();
         agentCallChartInstance = new Chart(dom.dashboard.agentCallChart, {
             type: 'bar',
             data: {
-                labels: callCenterData.agents.map(a => a.name),
-                datasets: [{ label: 'Llamadas', data: callCenterData.agents.map(a => callsByAgent[a.id]), backgroundColor: '#3b82f6' }]
+                labels: (callCenterData.agents || []).map(a => a.name),
+                datasets: [{ label: 'Llamadas', data: (callCenterData.agents || []).map(a => callsByAgent[a.id]), backgroundColor: '#3b82f6' }]
             },
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { color: textColor, stepSize: 1 }, grid: { color: gridColor } }, x: { ticks: { color: textColor }, grid: { color: gridColor } } }, plugins: { legend: { display: false } } }
         });
 
         const callsByType = {};
-        callCenterData.settings.callTypes.forEach(type => { callsByType[type] = 0; });
-        callCenterData.calls.forEach(c => { if(callsByType.hasOwnProperty(c.type)) callsByType[c.type]++; });
+        (callCenterData.settings.callTypes || []).forEach(type => { callsByType[type] = 0; });
+        (callCenterData.calls || []).forEach(c => { if(callsByType.hasOwnProperty(c.type)) callsByType[c.type]++; });
 
         if (callTypeChartInstance) callTypeChartInstance.destroy();
         callTypeChartInstance = new Chart(dom.dashboard.callTypeChart, {
@@ -179,14 +194,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const renderSettings = () => {
-        dom.settings.callTypesList.innerHTML = callCenterData.settings.callTypes.map(type => 
+        dom.settings.callTypesList.innerHTML = (callCenterData.settings.callTypes || []).map(type => 
             `<li class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
                 <span>${type}</span>
                 <button onclick="window.handleDeleteSetting('callTypes', '${type}')" class="text-red-500 hover:text-red-700 p-1"><i data-feather="trash-2" class="h-4 w-4"></i></button>
             </li>`
         ).join('');
 
-        dom.settings.resolutionStatusesList.innerHTML = callCenterData.settings.resolutionStatuses.map(status => 
+        dom.settings.resolutionStatusesList.innerHTML = (callCenterData.settings.resolutionStatuses || []).map(status => 
             `<li class="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-md">
                 <span>${status}</span>
                 <button onclick="window.handleDeleteSetting('resolutionStatuses', '${status}')" class="text-red-500 hover:text-red-700 p-1"><i data-feather="trash-2" class="h-4 w-4"></i></button>
@@ -204,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const getOptions = (dataArray, valueProp, textProp, selectedId) => {
         let options = '<option value="">Seleccione...</option>';
-        dataArray.sort((a,b) => (a[textProp] || '').localeCompare(b[textProp] || '')).forEach(item => {
+        (dataArray || []).sort((a,b) => (a[textProp] || '').localeCompare(b[textProp] || '')).forEach(item => {
             options += `<option value="${item[valueProp]}" ${item[valueProp] == selectedId ? 'selected' : ''}>${item[textProp]}</option>`;
         });
         return options;
@@ -213,12 +228,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const getContactOptions = (selectedId) => getOptions(callCenterData.contacts, 'id', 'name', selectedId);
     const getSettingOptions = (settingKey, selectedValue) => {
         let options = '<option value="">Seleccione...</option>';
-        callCenterData.settings[settingKey].forEach(value => {
+        (callCenterData.settings[settingKey] || []).forEach(value => {
              options += `<option value="${value}" ${value === selectedValue ? 'selected' : ''}>${value}</option>`;
         });
         return options;
     };
-    const getNameById = (dataArray, id) => (dataArray.find(item => item.id == id) || { name: 'N/A' }).name;
+    const getNameById = (dataArray, id) => ((dataArray || []).find(item => item.id == id) || { name: 'N/A' }).name;
 
     window.openModuleTable = (moduleKey) => {
         currentModule = moduleKey;
@@ -335,7 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const openFormModal = (moduleKey, id = null, prefillData = {}) => {
         currentModule = moduleKey;
         editingId = id;
-        const itemData = id ? { ...callCenterData[moduleKey].find(i => i.id == id) } : { ...prefillData };
+        const itemData = id ? { ...(callCenterData[moduleKey] || []).find(i => i.id == id) } : { ...prefillData };
         
         const titles = {
             agents: id ? 'Editar Agente' : 'Agregar Agente',
@@ -348,112 +363,121 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.modal.mainForm.innerHTML = formTemplates[moduleKey](itemData);
         dom.modal.mainForm.querySelector('#cancel-btn').onclick = () => toggleModal(dom.modal.el, false);
         toggleModal(dom.modal.el, true);
+        feather.replace();
     };
     
     window.handleEdit = (module, id) => openFormModal(module, id);
-    window.handleDelete = (module, id) => {
-        showConfirmation('Confirmar Eliminación', '¿Estás seguro de que quieres eliminar este registro?', () => {
-            callCenterData[module] = callCenterData[module].filter(item => item.id != id);
-            saveData();
-            renderTable(module);
-            showToast('Registro eliminado con éxito');
+    
+    window.handleDelete = async (module, id) => {
+        showConfirmation('Confirmar Eliminación', '¿Estás seguro de que quieres eliminar este registro?', async () => {
+            try {
+                if (isUserLoggedIn) {
+                    await api.delete(`/api/call-center/${module}/${id}`);
+                } else {
+                    callCenterData[module] = callCenterData[module].filter(item => item.id != id);
+                    saveLocalData();
+                }
+                await loadData();
+                renderTable(module);
+                showToast('Registro eliminado');
+            } catch(e) {}
         });
     };
+    
     window.createTaskFromCall = (callId) => {
         const call = callCenterData.calls.find(c => c.id == callId);
+        if (!call) return;
         const prefill = {
             sourceId: callId,
             description: `Seguimiento de llamada con ${getNameById(callCenterData.contacts, call.contactId)} del ${new Date(call.dateTime).toLocaleDateString()}.\nResumen: ${call.summary || 'N/A'}`
         }
         openFormModal('tasks', null, prefill);
     };
-    window.handleDeleteSetting = (settingKey, value) => {
-        showConfirmation('Confirmar Eliminación', `¿Estás seguro de eliminar "${value}"?`, () => {
-            callCenterData.settings[settingKey] = callCenterData.settings[settingKey].filter(item => item !== value);
-            saveData();
-            renderSettings();
-            showToast('Elemento eliminado');
+
+    window.handleDeleteSetting = async (settingKey, value) => {
+        showConfirmation('Confirmar Eliminación', `¿Estás seguro de eliminar "${value}"?`, async () => {
+            const currentSettings = callCenterData.settings;
+            currentSettings[settingKey] = currentSettings[settingKey].filter(item => item !== value);
+            try {
+                if (isUserLoggedIn) {
+                    await api.post('/api/call-center/settings', currentSettings);
+                } else {
+                    callCenterData.settings = currentSettings;
+                    saveLocalData();
+                }
+                await loadData();
+                renderSettings();
+                showToast('Elemento eliminado');
+            } catch(e) {}
         });
     };
     
-    dom.modal.mainForm.addEventListener('submit', (e) => {
+    dom.modal.mainForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
 
-        if (editingId) {
-            const index = callCenterData[currentModule].findIndex(item => item.id == editingId);
-            callCenterData[currentModule][index] = { ...callCenterData[currentModule][index], ...data };
-        } else {
-            data.id = Date.now();
-            callCenterData[currentModule].push(data);
-        }
-        saveData();
-        renderTable(currentModule);
-        toggleModal(dom.modal.el, false);
-        showToast(`Registro ${editingId ? 'actualizado' : 'guardado'} con éxito.`);
-        editingId = null;
+        try {
+            if (isUserLoggedIn) {
+                const endpoint = `/api/call-center/${currentModule}${editingId ? `/${editingId}` : ''}`;
+                const method = editingId ? 'PUT' : 'POST';
+                await api.request(method, endpoint, data);
+            } else {
+                const id = editingId ? Number(editingId) : Date.now();
+                if (editingId) {
+                    const index = callCenterData[currentModule].findIndex(item => item.id == editingId);
+                    callCenterData[currentModule][index] = { ...callCenterData[currentModule][index], ...data, id: id };
+                } else {
+                    callCenterData[currentModule].push({ ...data, id: id });
+                }
+                saveLocalData();
+            }
+            await loadData();
+            renderTable(currentModule);
+            toggleModal(dom.modal.el, false);
+            showToast(`Registro ${editingId ? 'actualizado' : 'guardado'}`);
+            editingId = null;
+        } catch(e) {}
     });
 
     dom.tabsContainer.addEventListener('click', (e) => {
         const button = e.target.closest('.tab-btn');
         if (!button) return;
         const targetId = button.dataset.target;
-        currentModule = targetId.replace('-section', '');
-
+        
         dom.tabsContainer.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
-        dom.mainContent.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-        
-        if (moduleConfig[currentModule]) {
-            window.openModuleTable(currentModule);
-        } else {
-            document.getElementById(targetId).classList.remove('hidden');
-            render(); 
-        }
-    });
-
-    dom.settings.addCallTypeForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const newType = e.target.elements.callTypeName.value.trim();
-        if (newType && !callCenterData.settings.callTypes.includes(newType)) {
-            callCenterData.settings.callTypes.push(newType);
-            saveData();
-            renderSettings();
-            showToast('Tipo de llamada agregado');
-        }
-        e.target.reset();
-    });
-    dom.settings.addResolutionStatusForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const newStatus = e.target.elements.statusName.value.trim();
-        if (newStatus && !callCenterData.settings.resolutionStatuses.includes(newStatus)) {
-            callCenterData.settings.resolutionStatuses.push(newStatus);
-            saveData();
-            renderSettings();
-            showToast('Estado de resolución agregado');
-        }
-        e.target.reset();
-    });
-
-    // --- INICIALIZACIÓN ---
-    const init = () => {
-        const applyTheme = (theme) => {
-            document.documentElement.classList.toggle('dark', theme === 'dark');
-            // Ya no es necesario cambiar el ícono con JS, el CSS se encarga del estilo.
-        };
-        applyTheme(localStorage.getItem('theme') || 'light');
-        
-        loadData();
         render();
-        
-        dom.themeToggle.addEventListener('click', () => {
-            const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-            localStorage.setItem('theme', newTheme);
-            applyTheme(newTheme);
-            render();
-        });
+    });
 
+    const handleSettingsForm = async (e, settingKey, inputName) => {
+        e.preventDefault();
+        const newValue = e.target.elements[inputName].value.trim();
+        const currentSettings = callCenterData.settings;
+        if (newValue && !currentSettings[settingKey].includes(newValue)) {
+            currentSettings[settingKey].push(newValue);
+            try {
+                if (isUserLoggedIn) {
+                    await api.post('/api/call-center/settings', currentSettings);
+                } else {
+                    callCenterData.settings = currentSettings;
+                    saveLocalData();
+                }
+                await loadData();
+                renderSettings();
+                showToast('Elemento agregado');
+            } catch(e) {}
+        }
+        e.target.reset();
+    };
+    
+    dom.settings.addCallTypeForm.addEventListener('submit', (e) => handleSettingsForm(e, 'callTypes', 'callTypeName'));
+    dom.settings.addResolutionStatusForm.addEventListener('submit', (e) => handleSettingsForm(e, 'resolutionStatuses', 'statusName'));
+
+    const init = async () => {
+        checkLoginStatus();
+        await loadData();
+        render();
         dom.modal.closeBtn.addEventListener('click', () => toggleModal(dom.modal.el, false));
     };
     

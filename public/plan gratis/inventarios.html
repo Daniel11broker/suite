@@ -17,6 +17,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
     
     <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="./sidebar.css">
 
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -100,17 +101,19 @@
         </div>
     </div>
     
-    <div id="form-modal" class="modal fixed inset-0 w-full h-full flex items-center justify-center z-50 opacity-0 transform scale-95 pointer-events-none modal-backdrop">
-         <div class="bg-white dark:bg-gray-800 w-11/12 md:max-w-xl mx-auto rounded-lg shadow-xl z-50">
-            <div class="py-4 text-left px-6">
-                <div class="flex justify-between items-center pb-3 border-b dark:border-gray-700">
-                    <p id="modal-title" class="text-2xl font-bold">Formulario</p>
-                    <button id="close-modal-btn" class="cursor-pointer z-50 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><i data-feather="x"></i></button>
-                </div>
-                <form id="main-form" class="mt-4 max-h-[80vh] overflow-y-auto pr-2"></form>
+  <div id="sidebar-config-modal" class="hidden fixed inset-0 w-full h-full flex items-center justify-center z-[200]" style="background-color: rgba(0,0,0,0.5);">
+    <div class="bg-white dark:bg-gray-800 w-11/12 md:max-w-xl mx-auto rounded-lg shadow-xl z-50">
+        <div class="py-4 text-left px-6">
+            <div class="flex justify-between items-center pb-3 border-b dark:border-gray-700">
+                <p id="sidebar-config-title" class="text-2xl font-bold">Cargando...</p>
+                <button id="sidebar-config-close-btn" class="cursor-pointer z-50 p-1 rounded-full hover:bg-gray-200 dark:hover-bg-gray-700">
+                    <i data-feather="x"></i>
+                </button>
             </div>
+            <form id="sidebar-config-form" class="mt-4 max-h-[80vh] overflow-y-auto pr-2"></form>
         </div>
     </div>
+</div>
 
     <div id="product-modal" class="modal fixed inset-0 w-full h-full flex items-center justify-center z-50 opacity-0 transform scale-95 pointer-events-none modal-backdrop"></div>
     <div id="adjustment-modal" class="modal fixed inset-0 w-full h-full flex items-center justify-center z-50 opacity-0 transform scale-95 pointer-events-none modal-backdrop"></div>
@@ -120,6 +123,20 @@
     <div id="profitability-report-modal" class="modal fixed inset-0 w-full h-full flex items-center justify-center z-50 opacity-0 transform scale-95 pointer-events-none modal-backdrop"></div>
     <div id="image-preview-modal" class="modal fixed inset-0 w-full h-full flex items-center justify-center z-[60] opacity-0 transform scale-95 pointer-events-none modal-backdrop"></div>
     <div id="toast-container"></div>
+    
+    <div id="form-modal" class="hidden fixed inset-0 w-full h-full flex items-center justify-center z-50" style="background-color: rgba(0,0,0,0.5);">
+    <div class="bg-white dark:bg-gray-800 w-11/12 md:max-w-2xl mx-auto rounded-lg shadow-xl z-50">
+        <div class="py-4 text-left px-6">
+            <div class="flex justify-between items-center pb-3 border-b dark:border-gray-700">
+                <p id="modal-title" class="text-2xl font-bold">Formulario</p>
+                <button id="close-modal-btn" class="cursor-pointer z-50 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            <form id="main-form" class="mt-4 max-h-[80vh] overflow-y-auto pr-2"></form>
+        </div>
+    </div>
+</div>
 
     <script src="sidebar.js" type="module"></script>
     <script src="inventarios.js" type="module"></script>

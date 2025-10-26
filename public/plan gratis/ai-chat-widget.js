@@ -4,6 +4,20 @@ export function initializeAiChat(translations, initialLang) {
     let currentLang = initialLang;
 
     const aiToggleButton = document.getElementById('ai-toggle-button');
+    
+    // --- NUEVA LÓGICA DE VERIFICACIÓN ---
+    // Revisa si el usuario ha iniciado sesión usando el mismo método que user-session.js
+    const loggedInUserJSON = localStorage.getItem('loggedInUser');
+    
+    // Si no hay sesión, oculta el botón y detiene la inicialización del chat de IA.
+    if (!loggedInUserJSON) {
+        if (aiToggleButton) {
+            aiToggleButton.style.display = 'none';
+        }
+        return; // Detiene la ejecución si el usuario no está logueado
+    }
+    // --- FIN DE LA LÓGICA DE VERIFICACIÓN ---
+
     const aiChatWindow = document.getElementById('ai-chat-window');
     const aiMessageList = document.getElementById('ai-message-list');
     const aiChatForm = document.getElementById('ai-chat-form');

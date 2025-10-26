@@ -1,6 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-    feather.replace();
-
+document.addEventListener('DOMContentLoaded', async () => {
     // --- Selectores del DOM ---
     const productList = document.getElementById('product-list');
     const cartItems = document.getElementById('cart-items');
@@ -16,23 +14,56 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Estado de la aplicación ---
     let cart = [];
     let inventory = [];
-    let tesoreriaData = {};
+    let tesoreriaData = { accounts: [] };
     let clientsData = [];
+    let isUserLoggedIn = false;
 
-    // --- Cargar Datos del Inventario (Robusto) ---
-    const loadData = () => {
-        try {
-            const inventoryData = localStorage.getItem('inventory');
-            inventory = inventoryData ? JSON.parse(inventoryData) : [];
-            const tesoreriaDataString = localStorage.getItem('tesoreria_data_v1');
-            tesoreriaData = tesoreriaDataString ? JSON.parse(tesoreriaDataString) : { accounts: [], manualTransactions: [] };
-            const clientsDataString = localStorage.getItem('clients');
-            clientsData = clientsDataString ? JSON.parse(clientsDataString) : [];
-        } catch (error) {
-            console.error("Error al cargar los datos:", error);
-            inventory = [];
-            tesoreriaData = { accounts: [], manualTransactions: [] };
-            clientsData = [];
+    // --- Lógica de Datos ---
+    const api = {
+        async request(method, endpoint, body = null) {
+            try {
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+                const response = await fetch(endpoint, options);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+                    throw new Error(errorData.error || `Error: ${response.status}`);
+                }
+                return response;
+            } catch (error) {
+                showToast(error.message, 'error');
+                throw error;
+            }
+        },
+        get: (endpoint) => api.request('GET', endpoint),
+        post: (endpoint, body) => api.request('POST', endpoint, body)
+    };
+
+    const checkLoginStatus = () => {
+        isUserLoggedIn = !!localStorage.getItem('loggedInUser');
+        console.log('Modo de operación POS:', isUserLoggedIn ? 'Base de Datos (Online)' : 'LocalStorage (Offline)');
+    };
+
+    const loadData = async () => {
+        if(isUserLoggedIn) {
+            try {
+                const response = await api.get('/api/pos/initial-data');
+                const data = await response.json();
+                inventory = data.inventory || [];
+                clientsData = data.clients || [];
+                tesoreriaData.accounts = data.accounts || [];
+            } catch(e) {
+                inventory = []; clientsData = []; tesoreriaData = { accounts: [] };
+            }
+        } else {
+            try {
+                inventory = JSON.parse(localStorage.getItem('inventory')) || [];
+                tesoreriaData = JSON.parse(localStorage.getItem('tesoreria_data_v1')) || { accounts: [], manualTransactions: [] };
+                clientsData = JSON.parse(localStorage.getItem('clients')) || [];
+            } catch (error) {
+                console.error("Error al cargar datos locales:", error);
+                inventory = []; tesoreriaData = { accounts: [] }; clientsData = [];
+            }
         }
     };
 
@@ -51,22 +82,21 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Lógica de Renderizado ---
     const renderProducts = (products) => {
         productList.innerHTML = '';
-        const validProducts = products.filter(p => p && p.name && (p.quantity || p.quantity === 0) && (p.salePrice || p.salePrice === 0));
+        const validProducts = (products || []).filter(p => p && p.name && (p.stock || p.stock === 0) && (p.price || p.price === 0));
         
         if (validProducts.length === 0) {
-            productList.innerHTML = `<p class="col-span-full text-center text-gray-500">No hay productos en stock. Agrega algunos en el módulo de Inventarios.</p>`;
+            productList.innerHTML = `<p class="col-span-full text-center text-gray-500">No hay productos. Agrega algunos en Inventarios.</p>`;
             return;
         }
 
         validProducts.forEach(product => {
-            if (parseInt(product.quantity) > 0) {
+            if (parseInt(product.stock) > 0) {
                 const productEl = document.createElement('div');
-                productEl.className = 'p-4 border rounded-md text-center cursor-pointer hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-700 transition-transform hover:scale-105';
+                productEl.className = 'p-4 border rounded-md text-center cursor-pointer hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-700';
                 productEl.innerHTML = `
                     <h3 class="font-semibold">${product.name}</h3>
-                    <p class="text-gray-500 dark:text-gray-400">$${parseInt(product.salePrice).toLocaleString()}</p>
-                    <p class="text-xs text-gray-400">Stock: ${product.quantity}</p>
-                `;
+                    <p class="text-gray-500 dark:text-gray-400">${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(product.price)}</p>
+                    <p class="text-xs text-gray-400">Stock: ${product.stock}</p>`;
                 productEl.addEventListener('click', () => addToCart(product));
                 productList.appendChild(productEl);
             }
@@ -76,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Lógica del Carrito ---
     const addToCart = (product) => {
         const existingItem = cart.find(item => item.id === product.id);
-        const stock = parseInt(product.quantity);
+        const stock = parseInt(product.stock);
 
         if (existingItem) {
             if (existingItem.quantity < stock) {
@@ -86,7 +116,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
              if (stock > 0) {
-                cart.push({ ...product, price: parseInt(product.salePrice), quantity: 1 });
+                cart.push({ ...product, quantity: 1 });
              } else {
                 showToast(`${product.name} no tiene stock disponible.`, 'error');
              }
@@ -104,14 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
             itemEl.innerHTML = `
                 <div>
                     <p class="font-semibold">${item.name}</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">$${item.price.toLocaleString()} x ${item.quantity}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(item.price)} x ${item.quantity}</p>
                 </div>
                 <div class="flex items-center">
                     <button class="px-2 py-1 text-sm btn-secondary remove-from-cart" data-id="${item.id}">-</button>
                     <span class="px-2">${item.quantity}</span>
                     <button class="px-2 py-1 text-sm btn-secondary add-to-cart" data-id="${item.id}">+</button>
-                </div>
-            `;
+                </div>`;
             cartItems.appendChild(itemEl);
             subtotal += item.price * item.quantity;
         });
@@ -120,9 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const tax = subtotal * taxRate;
         const total = subtotal + tax;
 
-        cartSubtotal.textContent = `$${subtotal.toLocaleString()}`;
-        cartTax.textContent = `$${tax.toLocaleString()}`;
-        cartTotal.textContent = `$${total.toLocaleString()}`;
+        cartSubtotal.textContent = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(subtotal);
+        cartTax.textContent = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(tax);
+        cartTotal.textContent = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(total);
 
         document.querySelectorAll('.remove-from-cart').forEach(button => {
             button.addEventListener('click', (e) => {
@@ -130,9 +159,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const item = cart.find(item => item.id === id);
                 if (item) {
                     item.quantity--;
-                    if (item.quantity === 0) {
-                        cart = cart.filter(item => item.id !== id);
-                    }
+                    if (item.quantity === 0) cart = cart.filter(item => item.id !== id);
                     renderCart();
                 }
             });
@@ -143,142 +170,99 @@ document.addEventListener('DOMContentLoaded', () => {
                  const id = parseInt(e.target.dataset.id, 10);
                  const productInCart = cart.find(item => item.id === id);
                  const productInInventory = inventory.find(item => item.id === id);
-
-                 if (productInCart && productInInventory) {
-                    if (productInCart.quantity < parseInt(productInInventory.quantity)) {
-                        productInCart.quantity++;
-                        renderCart();
-                    } else {
-                        showToast(`No hay más stock para ${productInCart.name}.`, 'error');
-                    }
+                 if (productInCart && productInInventory && productInCart.quantity < parseInt(productInInventory.stock)) {
+                    productInCart.quantity++;
+                    renderCart();
+                 } else {
+                    showToast(`No hay más stock para ${productInCart.name}.`, 'error');
                  }
             });
         });
     };
     
-    // Función para rellenar el selector de método de pago
     const populatePaymentMethods = () => {
-        paymentMethodSelect.innerHTML = `<option value="cash">Efectivo</option>`;
-        tesoreriaData.accounts.forEach(account => {
+        let cashAccount = (tesoreriaData.accounts || []).find(acc => acc.name === 'Caja General');
+        if (!cashAccount && !isUserLoggedIn) {
+            cashAccount = { id: 1, name: 'Caja General' }; 
+        }
+        paymentMethodSelect.innerHTML = cashAccount ? `<option value="${cashAccount.id}">Caja General (Efectivo)</option>` : '';
+        (tesoreriaData.accounts || []).filter(acc => acc.name !== 'Caja General').forEach(account => {
             paymentMethodSelect.innerHTML += `<option value="${account.id}">${account.name} (${account.bank})</option>`;
         });
     };
     
-    // Función para rellenar el selector de clientes
     const populateClients = () => {
-        const consumidorFinal = clientsData.find(c => c.name === 'Consumidor Final');
-        if (consumidorFinal) {
-            clientSelect.innerHTML = `<option value="${consumidorFinal.id}">Consumidor Final</option>`;
-        } else {
-            // Fallback si por alguna razón no existe
-            clientSelect.innerHTML = `<option value="1">Consumidor Final</option>`;
-        }
-        
-        clientsData.filter(c => c.name !== 'Consumidor Final').forEach(client => {
+        const consumidorFinal = (clientsData || []).find(c => c.name === 'Consumidor Final') || { id: 1, name: 'Consumidor Final'};
+        clientSelect.innerHTML = `<option value="${consumidorFinal.id}">Consumidor Final</option>`;
+        (clientsData || []).filter(c => c.name !== 'Consumidor Final').forEach(client => {
             clientSelect.innerHTML += `<option value="${client.id}">${client.name}</option>`;
         });
     };
 
-    // --- Event Listeners ---
-    applyIvaCheckbox.addEventListener('change', renderCart);
-
-    checkoutBtn.addEventListener('click', () => {
-        if (cart.length === 0) {
-            showToast('El carrito está vacío.', 'error');
-            return;
-        }
+    checkoutBtn.addEventListener('click', async () => {
+        if (cart.length === 0) return showToast('El carrito está vacío.', 'error');
         
         const selectedClient = clientSelect.options[clientSelect.selectedIndex];
-        const clientId = parseInt(selectedClient.value, 10);
-        const clientName = selectedClient.text;
-        const selectedPaymentMethod = paymentMethodSelect.value;
         const subtotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const taxRate = applyIvaCheckbox.checked ? 0.19 : 0;
         const iva = subtotal * taxRate;
-        const total = subtotal + iva;
-        const invoiceNumber = `POS-${Date.now()}`;
-        const today = new Date().toISOString().slice(0, 10);
-
-        // Lógica de integración con Inventarios
-        const movements = JSON.parse(localStorage.getItem('inventory_movements')) || [];
-        const updatedInventory = [...inventory];
-        cart.forEach(cartItem => {
-            const inventoryItem = updatedInventory.find(invItem => invItem.id === cartItem.id);
-            if (inventoryItem) {
-                const oldQuantity = parseInt(inventoryItem.quantity);
-                const quantitySold = cartItem.quantity;
-                const newQuantity = oldQuantity - quantitySold;
-                inventoryItem.quantity = newQuantity;
-
-                movements.push({
-                    id: Date.now() + Math.random(),
-                    productId: cartItem.id,
-                    date: today,
-                    type: 'Venta',
-                    quantityChange: `-${quantitySold}`,
-                    newQuantity: newQuantity,
-                    reason: `Venta POS #${invoiceNumber}`
-                });
-            }
-        });
-        localStorage.setItem('inventory', JSON.stringify(updatedInventory));
-        localStorage.setItem('inventory_movements', JSON.stringify(movements));
-
-        // Lógica de integración con Facturación
-        const invoiceData = {
-            id: Date.now() + 2,
-            clientId: clientId, 
-            clientName: clientName,
-            number: invoiceNumber,
-            issueDate: today,
-            subtotal: subtotal,
-            iva: iva,
-            total: total,
-            status: 'Pagado',
-            items: cart
-        };
-        const facturacionData = JSON.parse(localStorage.getItem('documentos_data_v3')) || { invoices: [], creditNotes: [], debitNotes: [], chargeAccounts: [] };
-        facturacionData.invoices.push(invoiceData);
-        localStorage.setItem('documentos_data_v3', JSON.stringify(facturacionData));
         
+        const saleData = {
+            cart: cart.map(item => ({ id: item.id, quantity: item.quantity, price: item.price, name: item.name, stock: item.stock })),
+            subtotal: subtotal, iva: iva, total: subtotal + iva,
+            clientId: parseInt(selectedClient.value, 10),
+            clientName: selectedClient.text,
+            paymentMethod: paymentMethodSelect.value,
+        };
+        
+        try {
+            if (isUserLoggedIn) {
+                const response = await api.post('/api/pos/checkout', saleData);
+                if (response.ok) {
+                    showToast('¡Venta completada!', 'success');
+                    cart = [];
+                    await loadData();
+                    renderProducts(inventory);
+                    renderCart();
+                }
+            } else {
+                // Lógica offline
+                const today = new Date().toISOString().slice(0, 10);
+                const invoiceNumber = `POS-${Date.now()}`;
+                
+                cart.forEach(cartItem => {
+                    const inventoryItem = inventory.find(invItem => invItem.id === cartItem.id);
+                    if(inventoryItem) inventoryItem.stock -= cartItem.quantity;
+                });
+                localStorage.setItem('inventory', JSON.stringify(inventory));
 
-        // Lógica de integración con Tesorería
-        const tesoreriaData = JSON.parse(localStorage.getItem('tesoreria_data_v1')) || { accounts: [], manualTransactions: [] };
-        let targetAccountId;
-        if (selectedPaymentMethod === 'cash') {
-            let cashAccount = tesoreriaData.accounts.find(acc => acc.name === 'Caja General');
-            if (!cashAccount) {
-                const newAccountId = Date.now();
-                cashAccount = { id: newAccountId, name: 'Caja General', bank: 'N/A', type: 'Efectivo', initialBalance: 0, currentBalance: 0 };
-                tesoreriaData.accounts.push(cashAccount);
+                const facturacionData = JSON.parse(localStorage.getItem('documentos_data_v3')) || { invoices: [] };
+                facturacionData.invoices.push({ id: Date.now(), ...saleData, number: invoiceNumber, issueDate: today, status: 'Pagado' });
+                localStorage.setItem('documentos_data_v3', JSON.stringify(facturacionData));
+                
+                const localTesoreria = JSON.parse(localStorage.getItem('tesoreria_data_v1')) || { accounts: [], manualTransactions: []};
+                localTesoreria.manualTransactions.push({
+                    id: Date.now() + 1, date: today, accountId: saleData.paymentMethod, type: 'inflow',
+                    description: `Venta POS #${invoiceNumber}`, amount: saleData.total
+                });
+                localStorage.setItem('tesoreria_data_v1', JSON.stringify(localTesoreria));
+
+                showToast('Venta local guardada. Sincroniza al iniciar sesión.');
+                cart = [];
+                renderProducts(inventory);
+                renderCart();
             }
-            targetAccountId = cashAccount.id;
-        } else {
-            targetAccountId = parseInt(selectedPaymentMethod, 10);
-        }
-
-        tesoreriaData.manualTransactions.push({
-            id: Date.now() + 1,
-            date: today,
-            accountId: targetAccountId,
-            type: 'inflow',
-            description: `Venta POS #${invoiceNumber}`,
-            amount: total
-        });
-        localStorage.setItem('tesoreria_data_v1', JSON.stringify(tesoreriaData));
-
-        showToast('¡Venta completada! Redirigiendo a facturación...', 'success');
-
-        setTimeout(() => {
-            window.location.href = 'facturacion.html';
-        }, 1500);
+        } catch(e) {}
     });
 
-    const init = () => {
-        loadData();
+    const init = async () => {
+        checkLoginStatus();
+        await loadData();
         renderProducts(inventory);
         populatePaymentMethods();
         populateClients();
+        applyIvaCheckbox.addEventListener('change', renderCart);
+        feather.replace();
     };
 
     init();

@@ -24,11 +24,13 @@ import { handleComprasRequest } from './comprasHandler.js';
 import { handleCrmRequest } from './crmHandler.js';
 import { handleFacturacionRequest } from './facturacionHandler.js';
 import { handleNominaRequest } from './nominaHandler.js';
-import { handlePosCheckout } from './posHandler.js';
+// ▼▼▼ CAMBIO 1: Corregir nombre de la función importada ▼▼▼
+import { handlePosRequest } from './posHandler.js';
 import { handleSstRequest } from './sgSstHandler.js';
 import { handleVentasRequest } from './ventasHandler.js';
 import { handleAuditoriasRequest } from './auditoriasHandler.js';
 import { handleRrhhRequest } from './rrhhHandler.js'; 
+import { handleTesoreriaRequest } from './tesoreriaHandler.js';
 
 
 // Exportamos las clases de Durable Objects para que Wrangler las reconozca
@@ -47,9 +49,8 @@ export default {
         return env.CHAT_LOBBY.get(lobbyId).fetch(request);
     }
     if (pathname === '/api/chat/request') {
-        const { userName, department } = await request.json(); // Se espera el departamento
+        const { userName, department } = await request.json(); 
         
-        // Verificación para el chat de Soporte
         if (department === 'Soporte') {
             const isAuthorized = await verifySupportUser(userName, env);
             if (!isAuthorized) {
@@ -86,10 +87,11 @@ export default {
 
     // 2. Rutas de la API principal (organizadas por prefijo)
     if (pathname === '/authLogin') return handleAuth(request, env);
-    if (pathname === '/api/ai-chat') return handleAiChatRequest(request, env);
-    if (pathname === '/api/pos/checkout') return handlePosCheckout(request, env);
+    if (pathname.startsWith('/api/ai-chat')) return handleAiChatRequest(request, env);
     
     // Rutas de Módulos
+    if (pathname.startsWith('/api/pos/')) return handlePosRequest(request, env); // ▼▼▼ CAMBIO 2: Corregir la ruta del POS ▼▼▼
+    if (pathname.startsWith('/api/accounts') || pathname.startsWith('/api/transactions')) return handleTesoreriaRequest(request, env);
     if (pathname.startsWith('/api/inventory')) return handleInventoryRequest(request, env);
     if (pathname.startsWith('/api/clients') || pathname.startsWith('/api/debtors')) return handleCobranzaRequest(request, env);
     if (pathname.startsWith('/api/reports')) return handleReportsRequest(request, env);
@@ -102,6 +104,7 @@ export default {
     if (pathname.startsWith('/api/ventas')) return handleVentasRequest(request, env);
     if (pathname.startsWith('/api/auditorias')) return handleAuditoriasRequest(request, env);
     if (pathname.startsWith('/api/rrhh')) return handleRrhhRequest(request, env);
+    if (pathname.startsWith('/api/ai-chat')) return handleAiChatRequest (request, env);
     
     // 3. Rutas de bajo nivel (KV y R2)
     if (pathname.startsWith('/kv/')) return handleKvRequest(request, env);

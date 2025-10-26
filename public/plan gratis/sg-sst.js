@@ -1,21 +1,6 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Lógica del menú lateral y tema ---
-    const sidebar = document.getElementById('sidebar');
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    if (window.innerWidth >= 768) {
-        sidebar.addEventListener('mouseenter', () => sidebar.classList.add('expanded'));
-        sidebar.addEventListener('mouseleave', () => sidebar.classList.remove('expanded'));
-    }
-    mobileMenuButton.addEventListener('click', (e) => { e.stopPropagation(); sidebar.classList.toggle('expanded'); });
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth < 768 && sidebar.classList.contains('expanded') && !sidebar.contains(e.target)) {
-            sidebar.classList.remove('expanded');
-        }
-    });
-
+document.addEventListener('DOMContentLoaded', async () => {
     // --- 1. CONFIGURACIÓN INICIAL Y SELECTORES ---
     const dom = {
-        themeToggle: document.getElementById('theme-toggle'),
         tabsContainer: document.getElementById('tabs-container'),
         mainContent: document.getElementById('main-content'),
         modal: {
@@ -29,26 +14,62 @@ document.addEventListener('DOMContentLoaded', () => {
             title: document.getElementById('confirm-title'),
             message: document.getElementById('confirm-message'),
             buttons: document.getElementById('confirm-buttons')
-        }
+        },
+        toastContainer: document.getElementById('toast-container')
     };
 
     let sstData = {};
     let editingId = null;
     let currentModule = 'dashboard';
     let riskChartInstance = null;
+    let isUserLoggedIn = false;
     
     const defaultData = {
-        settings: {}, // Eliminamos la configuración de aquí
         employees: [], risks: [], incidents: [], trainings: [], medicalExams: [], inspections: [], annualPlan: [], actionPlans: []
     };
 
     // --- 2. LÓGICA DE DATOS Y ESTADO ---
-    const saveData = () => localStorage.setItem('sgsst_data_v5', JSON.stringify(sstData));
-    const loadData = () => {
-        const data = localStorage.getItem('sgsst_data_v5');
-        sstData = data ? JSON.parse(data) : JSON.parse(JSON.stringify(defaultData));
-        for (const key in defaultData) {
-            if (!sstData.hasOwnProperty(key)) sstData[key] = defaultData[key];
+    const api = {
+        async request(method, endpoint, body = null) {
+            try {
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+                const response = await fetch(endpoint, options);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+                    throw new Error(errorData.error || `Error: ${response.status}`);
+                }
+                if (response.status === 204) return null;
+                return response.json();
+            } catch (error) {
+                showToast(error.message, 'error');
+                throw error;
+            }
+        },
+        get: (endpoint) => api.request('GET', endpoint),
+        post: (endpoint, body) => api.request('POST', endpoint, body),
+        put: (endpoint, body) => api.request('PUT', endpoint, body),
+        delete: (endpoint) => api.request('DELETE', endpoint)
+    };
+    
+    const checkLoginStatus = () => {
+        isUserLoggedIn = !!localStorage.getItem('loggedInUser');
+        console.log('Modo de operación SG-SST:', isUserLoggedIn ? 'Base de Datos (Online)' : 'LocalStorage (Offline)');
+    };
+
+    const saveLocalData = () => localStorage.setItem('sgsst_data_v5', JSON.stringify(sstData));
+
+    const loadData = async () => {
+        if (isUserLoggedIn) {
+            try {
+                const initialData = await api.get('/api/sg-sst/initial-data');
+                sstData = { ...JSON.parse(JSON.stringify(defaultData)), ...initialData };
+            } catch(e) {
+                sstData = JSON.parse(JSON.stringify(defaultData));
+            }
+        } else {
+            const data = localStorage.getItem('sgsst_data_v5');
+            sstData = data ? JSON.parse(data) : JSON.parse(JSON.stringify(defaultData));
         }
     };
     
@@ -81,12 +102,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const getEmployeeOptions = (selectedId = null) => {
         let options = '<option value="">Seleccione...</option>';
-        sstData.employees.sort((a,b) => a.name.localeCompare(b.name)).forEach(emp => {
+        (sstData.employees || []).sort((a,b) => a.name.localeCompare(b.name)).forEach(emp => {
             options += `<option value="${emp.id}" ${emp.id == selectedId ? 'selected' : ''}>${emp.name}</option>`;
         });
         return options;
     };
-    const getEmployeeName = (id) => (sstData.employees.find(e => e.id == id) || {name: 'N/A'}).name;
+    const getEmployeeName = (id) => ((sstData.employees || []).find(e => e.id == id) || {name: 'N/A'}).name;
 
     // --- 4. RENDERIZADO Y ACTUALIZACIÓN DE UI ---
     const renderPage = () => {
@@ -116,23 +137,23 @@ document.addEventListener('DOMContentLoaded', () => {
         section.innerHTML = `
             <h2 class="text-2xl font-bold mb-4">Panel de Control</h2>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="kpi-card p-4 rounded-lg shadow text-center"><h3 class="text-sm font-medium text-gray-500">Plan Anual</h3><p id="dashboard-plan-progress" class="text-2xl font-bold text-blue-600 mt-1">0%</p></div>
-                <div class="kpi-card p-4 rounded-lg shadow text-center"><h3 class="text-sm font-medium text-gray-500">Riesgos Nivel I</h3><p id="dashboard-high-risks" class="text-2xl font-bold text-red-600 mt-1">0</p></div>
-                <div class="kpi-card p-4 rounded-lg shadow text-center"><h3 class="text-sm font-medium text-gray-500">Accidentes (Año)</h3><p id="dashboard-accidents" class="text-2xl font-bold text-orange-600 mt-1">0</p></div>
-                <div class="kpi-card p-4 rounded-lg shadow text-center"><h3 class="text-sm font-medium text-gray-500">Planes de Acción Abiertos</h3><p id="dashboard-open-actions" class="text-2xl font-bold text-yellow-600 mt-1">0</p></div>
+                <div class="kpi-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow text-center"><h3 class="text-sm font-medium text-gray-500">Plan Anual</h3><p id="dashboard-plan-progress" class="text-2xl font-bold text-blue-600 mt-1">0%</p></div>
+                <div class="kpi-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow text-center"><h3 class="text-sm font-medium text-gray-500">Riesgos Nivel I</h3><p id="dashboard-high-risks" class="text-2xl font-bold text-red-600 mt-1">0</p></div>
+                <div class="kpi-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow text-center"><h3 class="text-sm font-medium text-gray-500">Accidentes (Año)</h3><p id="dashboard-accidents" class="text-2xl font-bold text-orange-600 mt-1">0</p></div>
+                <div class="kpi-card bg-white dark:bg-gray-800 p-4 rounded-lg shadow text-center"><h3 class="text-sm font-medium text-gray-500">Planes de Acción Abiertos</h3><p id="dashboard-open-actions" class="text-2xl font-bold text-yellow-600 mt-1">0</p></div>
             </div>
             <div class="mt-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow"><h3 class="text-lg font-semibold mb-4">Distribución de Riesgos por Nivel</h3><div class="h-64"><canvas id="risk-chart"></canvas></div></div>`;
 
-        const completedTasks = sstData.annualPlan.filter(t => t.status === 'Completado').length;
-        const totalTasks = sstData.annualPlan.length;
+        const completedTasks = (sstData.annualPlan || []).filter(t => t.status === 'Completado').length;
+        const totalTasks = (sstData.annualPlan || []).length;
         section.querySelector('#dashboard-plan-progress').textContent = totalTasks > 0 ? `${Math.round((completedTasks / totalTasks) * 100)}%` : '0%';
-        section.querySelector('#dashboard-high-risks').textContent = sstData.risks.filter(r => r.riskLevel === 'I').length;
+        section.querySelector('#dashboard-high-risks').textContent = (sstData.risks || []).filter(r => r.riskLevel === 'I').length;
         const oneYearAgo = new Date(); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        section.querySelector('#dashboard-accidents').textContent = sstData.incidents.filter(i => i.type === 'Accidente de Trabajo' && new Date(i.date) >= oneYearAgo).length;
-        section.querySelector('#dashboard-open-actions').textContent = sstData.actionPlans.filter(a => a.status !== 'Completado').length;
+        section.querySelector('#dashboard-accidents').textContent = (sstData.incidents || []).filter(i => i.type === 'Accidente de Trabajo' && new Date(i.date) >= oneYearAgo).length;
+        section.querySelector('#dashboard-open-actions').textContent = (sstData.actionPlans || []).filter(a => a.status !== 'Completado').length;
 
         const riskCounts = { 'I': 0, 'II': 0, 'III': 0, 'IV': 0 };
-        sstData.risks.forEach(risk => { if(riskCounts.hasOwnProperty(risk.riskLevel)) riskCounts[risk.riskLevel]++; });
+        (sstData.risks || []).forEach(risk => { if(riskCounts.hasOwnProperty(risk.riskLevel)) riskCounts[risk.riskLevel]++; });
         
         if (riskChartInstance) riskChartInstance.destroy();
         const isDark = document.documentElement.classList.contains('dark');
@@ -149,13 +170,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!section) return;
         section.innerHTML = `
             <h2 class="text-2xl font-bold mb-4">Indicadores de Gestión (Resolución 0312 de 2019)</h2>
-            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Estos valores se calculan con base en los datos de los empleados registrados en RRHH y los incidentes del último año.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Estos valores se calculan con base en los datos de los empleados y los incidentes del último año.</p>
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="indicators-grid"></div>`;
         
         const grid = section.querySelector('#indicators-grid');
         const N = (sstData.employees || []).filter(e => e.status === 'Activo').length;
         const oneYearAgo = new Date(); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        const incidentsLastYear = sstData.incidents.filter(i => new Date(i.date) >= oneYearAgo);
+        const incidentsLastYear = (sstData.incidents || []).filter(i => new Date(i.date) >= oneYearAgo);
         const accidentsLastYear = incidentsLastYear.filter(i => i.type === 'Accidente de Trabajo');
         const totalAccidents = accidentsLastYear.length;
         const daysLost = accidentsLastYear.reduce((sum, i) => sum + (parseInt(i.daysLost, 10) || 0), 0);
@@ -164,20 +185,19 @@ document.addEventListener('DOMContentLoaded', () => {
             { title: 'Frecuencia de Accidentes', value: N > 0 ? ((totalAccidents / N) * 100).toFixed(2) + '%' : 'N/A', formula: '(N° Accidentes / N° Trabajadores) * 100' },
             { title: 'Severidad de Accidentes', value: N > 0 ? ((daysLost / N) * 100).toFixed(2) + '%' : 'N/A', formula: '(Días Perdidos / N° Trabajadores) * 100' },
             { title: 'Mortalidad de Accidentes', value: totalAccidents > 0 ? ((accidentsLastYear.filter(i => i.severity === 'Mortal').length / totalAccidents) * 100).toFixed(2) + '%' : '0.00%', formula: '(N° Accidentes Mortales / Total Accidentes) * 100'},
-            { title: 'Prevalencia Enfermedad Laboral', value: N > 0 ? ((sstData.incidents.filter(i => i.type === 'Enfermedad Laboral').length / N) * 100000).toFixed(2) : 'N/A', formula: '(N° Casos Existentes EL / N° Trabajadores) * 100,000' },
+            { title: 'Prevalencia Enfermedad Laboral', value: N > 0 ? (((sstData.incidents || []).filter(i => i.type === 'Enfermedad Laboral').length / N) * 100000).toFixed(2) : 'N/A', formula: '(N° Casos Existentes EL / N° Trabajadores) * 100,000' },
             { title: 'Incidencia Enfermedad Laboral', value: N > 0 ? ((incidentsLastYear.filter(i => i.type === 'Enfermedad Laboral').length / N) * 100000).toFixed(2) : 'N/A', formula: '(N° Casos Nuevos EL / N° Trabajadores) * 100,000' },
             { title: 'Ausentismo por Causa Médica', value: 'N/A', formula: 'Próximamente' }
         ];
         
         indicators.forEach(ind => {
             const card = document.createElement('div');
-            card.className = 'kpi-card p-5 rounded-lg shadow';
+            card.className = 'kpi-card bg-white dark:bg-gray-800 p-5 rounded-lg shadow';
             card.innerHTML = `<h4 class="font-semibold text-gray-800 dark:text-gray-200">${ind.title}</h4><p class="text-3xl font-bold text-blue-600 my-2">${ind.value}</p><p class="text-xs text-gray-500 dark:text-gray-400">Fórmula: ${ind.formula}</p>`;
             grid.appendChild(card);
         });
     };
     
-    // --- FUNCIÓN NUEVA PARA RENDERIZAR "MÁS MÓDULOS" ---
     const renderMoreModulesSection = () => {
         const section = document.getElementById('more-modules-section');
         if (!section) return;
@@ -254,7 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const infoBanner = document.createElement('div');
             infoBanner.className = "bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 mb-4";
             infoBanner.setAttribute('role', 'alert');
-            infoBanner.innerHTML = `<p class="font-bold">Información</p><p>La gestión de empleados (crear, editar, eliminar) se realiza desde el módulo de <strong>Recursos Humanos</strong>.</p>`;
+            infoBanner.innerHTML = `<p class="font-bold">Información</p><p>La gestión de empleados se realiza desde el módulo de <strong>Recursos Humanos</strong>.</p>`;
             tableSection.insertBefore(infoBanner, tableSection.children[1]);
         }
 
@@ -272,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = sstData[moduleKey] || [];
         tableBody.innerHTML = '';
         if (data.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="${config.headers.length}" class="text-center p-6 text-gray-500">No hay registros. Comienza agregando uno.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="${config.headers.length}" class="text-center p-6 text-gray-500">No hay registros.</td></tr>`;
             return;
         }
 
@@ -283,23 +303,22 @@ document.addEventListener('DOMContentLoaded', () => {
             let extraActions = '';
 
             switch(moduleKey) {
-                case 'annualPlan': cellsHTML = `<td>${item.activity}</td><td>${getEmployeeName(item.responsible)}</td><td>${item.dueDate}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${item.status === 'Completado' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'}">${item.status}</span></td>`; break;
-                case 'risks': const riskColor = item.riskLevel === 'I' ? 'text-red-600' : item.riskLevel === 'II' ? 'text-orange-500' : 'text-yellow-500'; cellsHTML = `<td><div class="font-medium">${item.process}</div><div class="text-sm text-gray-500">${item.task}</div></td><td>${item.classification}</td><td class="font-bold ${riskColor}">${item.riskLevel} - ${item.riskInterpretation}</td><td>${item.controls}</td>`; extraActions = `<button onclick="window.createActionPlan('Riesgo', ${item.id}, 'Controlar riesgo: ${item.task.replace(/'/g, "\\'")}')" class="text-green-600 hover:text-green-900 mr-2" title="Crear Plan de Acción"><i data-feather="plus-circle" class="h-5 w-5"></i></button>`; break;
-                case 'incidents': cellsHTML = `<td>${item.date}</td><td>${item.type}</td><td>${item.description}</td><td>${item.involved}</td>`; extraActions = `<button onclick="window.createActionPlan('Incidente', ${item.id}, 'Investigar incidente: ${item.description.replace(/'/g, "\\'")}')" class="text-green-600 hover:text-green-900 mr-2" title="Crear Plan de Acción"><i data-feather="plus-circle" class="h-5 w-5"></i></button>`; break;
-                case 'actionPlans': cellsHTML = `<td>${item.task}</td><td>${item.sourceType} N° ${item.sourceId}</td><td>${getEmployeeName(item.responsible)}</td><td>${item.dueDate}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${item.status === 'Completado' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'}">${item.status}</span></td>`; break;
-                case 'employees': cellsHTML = `<td>${item.name}</td><td>${item.idNumber}</td><td>${item.position}</td>`; extraActions = `<a href="./recursoshumanos.html" class="text-blue-600 hover:text-blue-800" title="Gestionar en RRHH"><i data-feather="external-link" class="h-5 w-5"></i></a>`; break;
-                case 'trainings': cellsHTML = `<td>${item.topic}</td><td>${item.date}</td><td>${item.instructor}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${item.status === 'Realizada' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300'}">${item.status}</span></td>`; break;
+                case 'annualPlan': cellsHTML = `<td>${item.activity}</td><td>${getEmployeeName(item.responsible)}</td><td>${item.dueDate}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${item.status === 'Completado' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${item.status}</span></td>`; break;
+                case 'risks': const riskColor = item.riskLevel === 'I' ? 'text-red-600' : item.riskLevel === 'II' ? 'text-orange-500' : 'text-yellow-500'; cellsHTML = `<td>${item.process} / ${item.task}</td><td>${item.classification}</td><td class="font-bold ${riskColor}">${item.riskLevel} - ${item.riskInterpretation}</td><td>${item.controls}</td>`; extraActions = `<button onclick="window.createActionPlan('Riesgo', ${item.id}, 'Controlar riesgo: ${item.task.replace(/'/g, "\\'")}')" class="text-green-600 mr-2" title="Crear Plan de Acción"><i data-feather="plus-circle"></i></button>`; break;
+                case 'incidents': cellsHTML = `<td>${item.date}</td><td>${item.type}</td><td>${item.description}</td><td>${item.involved}</td>`; extraActions = `<button onclick="window.createActionPlan('Incidente', ${item.id}, 'Investigar incidente: ${item.description.replace(/'/g, "\\'")}')" class="text-green-600 mr-2" title="Crear Plan de Acción"><i data-feather="plus-circle"></i></button>`; break;
+                case 'actionPlans': cellsHTML = `<td>${item.task}</td><td>${item.sourceType} N° ${item.sourceId}</td><td>${getEmployeeName(item.responsible)}</td><td>${item.dueDate}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${item.status === 'Completado' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">${item.status}</span></td>`; break;
+                case 'employees': cellsHTML = `<td>${item.name}</td><td>${item.idNumber}</td><td>${item.position}</td>`; extraActions = `<a href="./recursoshumanos.html" class="text-blue-600" title="Gestionar en RRHH"><i data-feather="external-link"></i></a>`; break;
+                case 'trainings': cellsHTML = `<td>${item.topic}</td><td>${item.date}</td><td>${item.instructor}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${item.status === 'Realizada' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}">${item.status}</span></td>`; break;
                 case 'medicalExams': cellsHTML = `<td>${getEmployeeName(item.employeeId)}</td><td>${item.examType}</td><td>${item.date}</td><td>${item.result}</td>`; break;
-                case 'inspections': cellsHTML = `<td>${item.area}</td><td>${item.date}</td><td>${getEmployeeName(item.responsible)}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${item.status === 'Conforme' ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'}">${item.status}</span></td>`; extraActions = item.status === 'No Conforme' ? `<button onclick="window.createActionPlan('Inspección', ${item.id}, 'Corregir hallazgo en: ${item.area.replace(/'/g, "\\'")}')" class="text-green-600 hover:text-green-900 mr-2" title="Crear Plan de Acción"><i data-feather="plus-circle" class="h-5 w-5"></i></button>`: ''; break;
+                case 'inspections': cellsHTML = `<td>${item.area}</td><td>${item.date}</td><td>${getEmployeeName(item.responsible)}</td><td><span class="px-2 py-1 text-xs font-semibold rounded-full ${item.status === 'Conforme' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${item.status}</span></td>`; extraActions = item.status === 'No Conforme' ? `<button onclick="window.createActionPlan('Inspección', ${item.id}, 'Corregir hallazgo en: ${item.area.replace(/'/g, "\\'")}')" class="text-green-600 mr-2" title="Crear Plan de Acción"><i data-feather="plus-circle"></i></button>`: ''; break;
             }
-            const actionsHTML = `<td class="px-4 py-3 text-center flex items-center justify-center">${extraActions}<button onclick="window.handleEdit('${moduleKey}', ${item.id})" class="text-blue-600 hover:text-blue-900 mr-2" title="Editar"><i data-feather="edit-2" class="h-5 w-5"></i></button><button onclick="window.handleDelete('${moduleKey}', ${item.id})" class="text-red-600 hover:text-red-900" title="Eliminar"><i data-feather="trash-2" class="h-5 w-5"></i></button></td>`;
+            const actionsHTML = `<td class="px-4 py-3 text-center flex items-center justify-center">${extraActions}<button onclick="window.handleEdit('${moduleKey}', ${item.id})" class="text-blue-600 mr-2" title="Editar"><i data-feather="edit-2"></i></button><button onclick="window.handleDelete('${moduleKey}', ${item.id})" class="text-red-600" title="Eliminar"><i data-feather="trash-2"></i></button></td>`;
             tr.innerHTML = cellsHTML.split('</td>').map(cell => cell ? `<td class="px-4 py-3">${cell.substring(4)}</td>` : '').join('') + actionsHTML;
             tableBody.appendChild(tr);
         });
         feather.replace();
     };
     
-    // El resto del script sigue igual
     const gtc45 = { interpretacion: { 'I': 'No Aceptable', 'II': 'Aceptable con Control', 'III': 'Mejorable', 'IV': 'Aceptable' } };
     const calculateRiskLevel = () => {
         const form = dom.modal.mainForm;
@@ -317,8 +336,9 @@ document.addEventListener('DOMContentLoaded', () => {
         form.querySelector('[name="riskLevel"]').value = nivelRiesgo;
         form.querySelector('[name="riskInterpretation"]').value = gtc45.interpretacion[nivelRiesgo];
     };
+    
     const formTemplates = {
-        employees: (data = {}) => `<input type="hidden" name="id" value="${data.id || ''}"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="block text-sm font-medium">Nombre Completo</label><input type="text" name="name" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.name || ''}" required></div><div><label class="block text-sm font-medium">Cédula</label><input type="text" name="idNumber" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.idNumber || ''}"></div></div><div class="mt-4"><label class="block text-sm font-medium">Cargo</label><input type="text" name="position" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.position || ''}"></div><div class="flex justify-end mt-6"><button type="button" class="bg-gray-300 dark:bg-gray-600 font-semibold py-2 px-4 rounded-lg mr-2" id="cancel-btn">Cancelar</button><button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Guardar</button></div>`,
+        employees: (data = {}) => `<p class="text-center">La gestión de empleados se realiza en el módulo de <strong>Recursos Humanos</strong>.</p><div class="flex justify-center mt-4"><a href="./recursoshumanos.html" class="bg-blue-600 text-white py-2 px-4 rounded-lg">Ir a RRHH</a></div>`,
         annualPlan: (data = {}) => `<input type="hidden" name="id" value="${data.id || ''}"><div><label class="block text-sm font-medium">Actividad</label><input type="text" name="activity" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.activity || ''}" required></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4"><div><label class="block text-sm font-medium">Responsable</label><select name="responsible" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700">${getEmployeeOptions(data.responsible)}</select></div><div><label class="block text-sm font-medium">Fecha Límite</label><input type="date" name="dueDate" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.dueDate || ''}" required></div></div><div class="mt-4"><label class="block text-sm font-medium">Estado</label><select name="status" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" required><option ${data.status === 'Pendiente' ? 'selected' : ''}>Pendiente</option><option ${data.status === 'En Progreso' ? 'selected' : ''}>En Progreso</option><option ${data.status === 'Completado' ? 'selected' : ''}>Completado</option></select></div><div class="flex justify-end mt-6"><button type="button" class="bg-gray-300 dark:bg-gray-600 font-semibold py-2 px-4 rounded-lg mr-2" id="cancel-btn">Cancelar</button><button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Guardar</button></div>`,
         risks: (data = {}) => `<input type="hidden" name="id" value="${data.id || ''}"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="block text-sm font-medium">Proceso</label><input type="text" name="process" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.process || ''}" required></div><div><label class="block text-sm font-medium">Actividad</label><input type="text" name="task" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.task || ''}" required></div></div><div class="mt-4"><label class="block text-sm font-medium">Clasificación del Peligro</label><select name="classification" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700"><option>Biológico</option><option>Físico</option><option>Químico</option><option>Psicosocial</option><option>Biomecánico</option><option>Condiciones de Seguridad</option><option>Fenómenos Naturales</option></select></div><div class="mt-4 border-t pt-4"><p class="font-semibold mb-2">Evaluación del Riesgo (GTC 45)</p><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div><label class="block text-sm font-medium">Nivel de Deficiencia (ND)</label><select name="deficiencyLevel" class="gtc45-calc mt-1 block w-full border rounded-md p-2 dark:bg-gray-700"><option value="10">Muy Alto</option><option value="6">Alto</option><option value="2">Medio</option><option value="0">Bajo</option></select></div><div><label class="block text-sm font-medium">Nivel de Exposición (NE)</label><select name="exposureLevel" class="gtc45-calc mt-1 block w-full border rounded-md p-2 dark:bg-gray-700"><option value="4">Continua</option><option value="3">Frecuente</option><option value="2">Ocasional</option><option value="1">Esporádica</option></select></div><div><label class="block text-sm font-medium">Nivel de Consecuencia (NC)</label><select name="consequenceLevel" class="gtc45-calc mt-1 block w-full border rounded-md p-2 dark:bg-gray-700"><option value="100">Mortal</option><option value="60">Muy Grave</option><option value="25">Grave</option><option value="10">Leve</option></select></div></div><div class="grid grid-cols-3 gap-4 mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded"><div class="text-center"><p class="text-xs">Nivel Probabilidad (NP=ND+NE)</p><p class="font-bold text-lg"><span id="np_level">--</span> (<span id="np_value">--</span>)</p></div><div class="text-center"><p class="text-xs">Nivel Riesgo (NR=NPxNC)</p><p class="font-bold text-lg" id="ir_value">--</p></div><div class="text-center"><p class="text-xs">Nivel / Interpretación</p><div class="flex justify-center items-center font-bold text-lg"><input type="text" name="riskLevel" class="w-8 bg-transparent text-center p-0 border-0" readonly> - <input type="text" name="riskInterpretation" class="w-full bg-transparent p-0 border-0" readonly></div></div></div></div><div class="mt-4"><label class="block text-sm font-medium">Controles Existentes (Fuente, Medio, Individuo)</label><textarea name="controls" rows="2" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700">${data.controls || ''}</textarea></div><div class="flex justify-end mt-6"><button type="button" class="bg-gray-300 dark:bg-gray-600 font-semibold py-2 px-4 rounded-lg mr-2" id="cancel-btn">Cancelar</button><button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Guardar</button></div>`,
         incidents: (data = {}) => `<input type="hidden" name="id" value="${data.id || ''}"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="block text-sm font-medium">Fecha del Evento</label><input type="date" name="date" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.date || new Date().toISOString().slice(0,10)}" required></div><div><label class="block text-sm font-medium">Tipo de Evento</label><select name="type" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700"><option>Incidente de Trabajo</option><option>Accidente de Trabajo</option><option>Enfermedad Laboral</option></select></div></div><div class="mt-4"><label class="block text-sm font-medium">Descripción del Evento</label><textarea name="description" rows="3" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700">${data.description || ''}</textarea></div><div class="mt-4"><label class="block text-sm font-medium">Personas Involucradas</label><input type="text" name="involved" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.involved || ''}"></div><div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4"><div><label class="block text-sm font-medium">Severidad (si aplica)</label><select name="severity" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700"><option>N/A</option><option>Leve</option><option>Grave</option><option>Mortal</option></select></div><div><label class="block text-sm font-medium">Días Perdidos (si aplica)</label><input type="number" name="daysLost" class="mt-1 block w-full border rounded-md p-2 dark:bg-gray-700" value="${data.daysLost || 0}"></div></div><div class="flex justify-end mt-6"><button type="button" class="bg-gray-300 dark:bg-gray-600 font-semibold py-2 px-4 rounded-lg mr-2" id="cancel-btn">Cancelar</button><button type="submit" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg">Guardar</button></div>`,
@@ -331,28 +351,61 @@ document.addEventListener('DOMContentLoaded', () => {
     const openFormModal = (moduleKey, id = null, prefillData = {}) => {
         currentModule = moduleKey;
         editingId = id;
-        const itemData = id ? { ...sstData[moduleKey].find(i => i.id == id) } : { ...prefillData };
+        const itemData = id ? { ...(sstData[moduleKey] || []).find(i => i.id == id) } : { ...prefillData };
         const titles = { employees: id ? 'Editar Empleado' : 'Agregar Empleado', annualPlan: id ? 'Editar Actividad' : 'Agregar Actividad al Plan', risks: id ? 'Editar Riesgo' : 'Identificar Peligro', incidents: id ? 'Editar Reporte' : 'Reportar Incidente', trainings: id ? 'Editar Capacitación' : 'Programar Capacitación', medicalExams: id ? 'Editar Examen' : 'Registrar Examen Médico', inspections: id ? 'Editar Inspección' : 'Registrar Inspección', actionPlans: id ? 'Editar Plan de Acción' : 'Crear Plan de Acción' };
         dom.modal.title.textContent = titles[moduleKey] || 'Formulario';
         dom.modal.mainForm.innerHTML = formTemplates[moduleKey](itemData);
-        if (moduleKey === 'risks') { dom.modal.mainForm.querySelectorAll('.gtc45-calc').forEach(el => el.addEventListener('change', calculateRiskLevel)); if (id || Object.keys(itemData).length > 0) calculateRiskLevel(); }
-        dom.modal.mainForm.querySelector('#cancel-btn').onclick = () => toggleModal(dom.modal.el, false);
+        if (moduleKey === 'risks') { dom.modal.mainForm.querySelectorAll('.gtc45-calc').forEach(el => el.addEventListener('change', calculateRiskLevel)); calculateRiskLevel(); }
+        dom.modal.mainForm.querySelector('#cancel-btn')?.addEventListener('click', () => toggleModal(dom.modal.el, false));
         toggleModal(dom.modal.el, true);
+        feather.replace();
     };
     
     window.handleEdit = (module, id) => openFormModal(module, id);
-    window.handleDelete = (module, id) => { showConfirmation("Confirmar Eliminación", "¿Estás seguro de que deseas eliminar este registro?", () => { sstData[module] = sstData[module].filter(i => i.id != id); saveData(); renderTable(module); renderPage(); showToast('Registro eliminado', 'error'); }); };
+    window.handleDelete = (module, id) => { 
+        showConfirmation("Confirmar Eliminación", "¿Estás seguro de que deseas eliminar este registro?", async () => { 
+            try {
+                if(isUserLoggedIn) {
+                    await api.delete(`/api/sg-sst/${module}/${id}`);
+                } else {
+                    sstData[module] = sstData[module].filter(i => i.id != id);
+                    saveLocalData();
+                }
+                await loadData();
+                renderPage();
+                showToast('Registro eliminado', 'error'); 
+            } catch(e) {}
+        }); 
+    };
     window.createActionPlan = (sourceType, sourceId, task) => { openFormModal('actionPlans', null, { sourceType, sourceId, task }); };
     
-    dom.modal.mainForm.addEventListener('submit', (e) => {
+    dom.modal.mainForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(dom.modal.mainForm);
         const data = Object.fromEntries(formData.entries());
-        if (editingId) { const index = sstData[currentModule].findIndex(i => i.id == editingId); sstData[currentModule][index] = { ...sstData[currentModule][index], ...data, id: editingId }; showToast('Registro actualizado'); } else { data.id = Date.now(); sstData[currentModule].push(data); showToast('Registro agregado'); } renderTable(currentModule);
-        saveData();
-        renderPage();
-        toggleModal(dom.modal.el, false);
-        editingId = null;
+        if(currentModule === 'employees') { toggleModal(dom.modal.el, false); return; }
+
+        try {
+            if(isUserLoggedIn) {
+                const endpoint = `/api/sg-sst/${currentModule}${editingId ? `/${editingId}` : ''}`;
+                const method = editingId ? 'PUT' : 'POST';
+                await api.request(method, { ...data, id: editingId ? Number(editingId) : undefined });
+            } else {
+                if (editingId) { 
+                    const index = sstData[currentModule].findIndex(i => i.id == editingId); 
+                    sstData[currentModule][index] = { ...sstData[currentModule][index], ...data, id: Number(editingId) }; 
+                } else { 
+                    data.id = Date.now(); 
+                    sstData[currentModule].push(data); 
+                }
+                saveLocalData();
+            }
+            showToast(`Registro ${editingId ? 'actualizado' : 'agregado'}`);
+            toggleModal(dom.modal.el, false);
+            editingId = null;
+            await loadData();
+            renderPage();
+        } catch(e) {}
     });
 
     dom.tabsContainer.addEventListener('click', (e) => {
@@ -363,19 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPage();
     });
 
-    const init = () => {
-        const applyTheme = (theme) => document.documentElement.classList.toggle('dark', theme === 'dark');
-        applyTheme(localStorage.getItem('theme') || 'light');
-        
-        loadData();
+    const init = async () => {
+        checkLoginStatus();
+        await loadData();
         renderPage();
-        
-        dom.themeToggle.addEventListener('click', () => {
-            const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-            localStorage.setItem('theme', newTheme);
-            applyTheme(newTheme);
-            renderPage();
-        });
         dom.modal.closeBtn.addEventListener('click', () => toggleModal(dom.modal.el, false));
     };
     

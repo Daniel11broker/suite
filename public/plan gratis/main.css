@@ -58,46 +58,6 @@ button:disabled {
     }
 }
 
-/* --- Theme Toggle Switch --- */
-#theme-toggle {
-    position: relative; 
-    width: 52px; 
-    height: 28px; 
-    border-radius: 9999px;
-    background-color: #e2e8f0; 
-    transition: background-color 0.3s ease-in-out;
-    cursor: pointer; 
-    border: none; 
-    padding: 0; 
-    display: flex; 
-    align-items: center;
-}
-.dark #theme-toggle { 
-    background-color: #3b82f6; 
-}
-#theme-toggle-circle {
-    position: absolute; 
-    top: 2px; 
-    left: 2px; 
-    width: 24px; 
-    height: 24px;
-    background-color: white; 
-    border-radius: 9999px;
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    transform: translateX(0); 
-    transition: transform 0.3s ease-in-out;
-}
-.dark #theme-toggle-circle { 
-    transform: translateX(24px); 
-}
-
-/* **NUEVA REGLA PARA OCULTAR BOTÓN EN MÓVIL** */
-@media (max-width: 767px) {
-    #main-content-wrapper header #theme-toggle {
-        display: none;
-    }
-}
-
 /* --- Modals, Toasts & Tabs --- */
 .modal-backdrop { 
     background-color: rgba(0, 0, 0, 0.5); 
@@ -124,19 +84,11 @@ button:disabled {
     color: #2563eb; 
     background-color: #eff6ff; 
 }
-.dark .tab-btn.active { 
-    background-color: #1e3a8a; 
-    color: #bfdbfe; 
-    border-color: #3b82f6;
-}
 
 /* --- Module-Specific Styles --- */
 .kpi-card:hover { 
     transform: translateY(-4px); 
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); 
-}
-.dark .kpi-card:hover { 
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2); 
 }
 .filter-btn.active { 
     background-color: #2563eb; 
@@ -222,10 +174,6 @@ button:disabled {
     animation: slide-in 0.3s ease-out;
     border: 1px solid #e5e7eb; /* Borde sutil */
 }
-.dark .chat-window {
-    background-color: #1f2937; /* gray-800 */
-    border-color: #374151; /* gray-700 */
-}
 
 @keyframes slide-in {
     from { opacity: 0; transform: scale(0.95) translateY(10px); }
@@ -241,10 +189,6 @@ button:disabled {
     font-weight: 700; /* font-bold */
     text-align: center;
 }
-.dark .chat-header {
-    background-color: #374151; /* gray-700 */
-    border-color: #4b5563; /* gray-600 */
-}
 
 .chat-body {
     flex-grow: 1;
@@ -256,9 +200,6 @@ button:disabled {
     padding: 0.5rem; /* p-2 */
     border-top: 1px solid #e5e7eb; /* border-t */
 }
-.dark .chat-footer {
-    border-color: #4b5563; /* gray-600 */
-}
 
 .chat-input {
     flex-grow: 1;
@@ -266,10 +207,6 @@ button:disabled {
     border-radius: 0.375rem; /* rounded-md */
     padding: 0.5rem; /* p-2 */
     font-size: 0.875rem; /* text-sm */
-}
-.dark .chat-input {
-    background-color: #374151; /* gray-700 */
-    border-color: #4b5563; /* gray-600 */
 }
 
 .chat-send-button {
@@ -304,14 +241,9 @@ button:disabled {
 .ai-message.assistant .ai-message-bubble {
     background-color: #e5e7eb; /* gray-200 */
 }
-.dark .ai-message.assistant .ai-message-bubble {
-    background-color: #374151; /* gray-700 */
-}
 /* === FIN: NUEVOS ESTILOS PARA WIDGETS DE CHAT === */
 
 /* === INICIO: NUEVOS ESTILOS PARA POSICIÓN DE BOTONES DE CHAT === */
-
-/* Contenedor principal que se fija a la pantalla */
 #chat-buttons-container {
     position: fixed;
     bottom: 1.25rem; /* 20px */
@@ -321,21 +253,16 @@ button:disabled {
     height: 9rem;  /* Altura para ambos botones con espacio */
 }
 
-/* Hacemos que los wrappers de los widgets se posicionen de forma absoluta
-   dentro del nuevo contenedor principal */
 #chat-buttons-container .widget-wrapper {
     position: absolute;
     right: 0;
 }
 
-/* Posiciona el primer wrapper (Soporte/Verde) en la parte inferior */
 #chat-buttons-container .widget-wrapper:first-child {
     bottom: 0;
 }
 
-/* Posiciona el segundo wrapper (IA/Púrpura) en la parte superior */
 #chat-buttons-container .widget-wrapper:last-child {
     top: 0;
 }
-
 /* === FIN: NUEVOS ESTILOS PARA POSICIÓN DE BOTONES DE CHAT === */

@@ -1,18 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- Lógica del menú lateral y tema (sin cambios) ---
-    const sidebar = document.getElementById('sidebar');
-    const mobileMenuButton = document.getElementById('mobile-menu-button');
-    if (window.innerWidth >= 768) {
-        sidebar.addEventListener('mouseenter', () => sidebar.classList.add('expanded'));
-        sidebar.addEventListener('mouseleave', () => sidebar.classList.remove('expanded'));
-    }
-    mobileMenuButton.addEventListener('click', (e) => { e.stopPropagation(); sidebar.classList.toggle('expanded'); });
-    document.addEventListener('click', (e) => {
-        if (window.innerWidth < 768 && sidebar.classList.contains('expanded') && !sidebar.contains(e.target)) {
-            sidebar.classList.remove('expanded');
-        }
-    });
-
+document.addEventListener('DOMContentLoaded', async () => {
     // --- Selectores DOM y Estado Global ---
     const dom = {
         documentListView: document.getElementById('document-list-view'),
@@ -25,7 +11,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentView = 'list';
     let currentDocumentType = 'invoices';
     let editingId = null;
-    let prefilledData = null; 
+    let prefilledData = null;
+    let isUserLoggedIn = false;
     let state = {
         filters: { search: '', startDate: '', endDate: '' },
         pagination: { currentPage: 1, itemsPerPage: 10 }
@@ -34,14 +21,58 @@ document.addEventListener('DOMContentLoaded', () => {
         invoices: [], creditNotes: [], debitNotes: [], chargeAccounts: []
     };
     
-    // --- Gestión de Datos (LocalStorage) ---
-    const saveData = () => localStorage.setItem('documentos_data_v3', JSON.stringify(documentosData));
-    const saveClientsData = () => localStorage.setItem('clients', JSON.stringify(clientsData));
-    const loadData = () => {
-        const data = localStorage.getItem('documentos_data_v3');
-        documentosData = data ? JSON.parse(data) : JSON.parse(JSON.stringify(defaultData));
-        clientsData = JSON.parse(localStorage.getItem('clients')) || [];
-        if (!documentosData.chargeAccounts) documentosData.chargeAccounts = [];
+    // --- Gestión de Datos ---
+    const api = {
+        async request(method, endpoint, body = null) {
+            try {
+                const options = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) options.body = JSON.stringify(body);
+                const response = await fetch(endpoint, options);
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+                    throw new Error(errorData.error || `Error: ${response.status}`);
+                }
+                if (response.status === 204) return null;
+                return response.json();
+            } catch (error) {
+                showToast(error.message, 'error');
+                throw error;
+            }
+        },
+        get: (endpoint) => api.request('GET', endpoint),
+        post: (endpoint, body) => api.request('POST', endpoint, body),
+        put: (endpoint, body) => api.request('PUT', endpoint, body),
+        delete: (endpoint) => api.request('DELETE', endpoint)
+    };
+    
+    const checkLoginStatus = () => {
+        isUserLoggedIn = !!localStorage.getItem('loggedInUser');
+        console.log('Modo de operación Facturación:', isUserLoggedIn ? 'Base de Datos (Online)' : 'LocalStorage (Offline)');
+    };
+
+    const saveLocalData = () => {
+        localStorage.setItem('documentos_data_v3', JSON.stringify(documentosData));
+        localStorage.setItem('clients', JSON.stringify(clientsData));
+    };
+    
+    const loadData = async () => {
+        if (isUserLoggedIn) {
+            try {
+                const initialData = await api.get('/api/facturacion/initial-data');
+                documentosData.invoices = initialData.invoices || [];
+                documentosData.creditNotes = initialData.creditNotes || [];
+                documentosData.debitNotes = initialData.debitNotes || [];
+                documentosData.chargeAccounts = initialData.chargeAccounts || [];
+                clientsData = initialData.clients || [];
+            } catch(e) {
+                documentosData = JSON.parse(JSON.stringify(defaultData));
+                clientsData = [];
+            }
+        } else {
+            const data = localStorage.getItem('documentos_data_v3');
+            documentosData = data ? JSON.parse(data) : JSON.parse(JSON.stringify(defaultData));
+            clientsData = JSON.parse(localStorage.getItem('clients')) || [];
+        }
     };
     
     // --- Utilidades ---
@@ -58,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 500); }, 4000);
     };
 
-    // --- Lógica de Filtrado, Paginación y Exportación (sin cambios) ---
+    // --- Lógica de Filtrado, Paginación y Exportación ---
     const getFilteredData = () => {
         const documents = documentosData[currentDocumentType] || [];
         const { search, startDate, endDate } = state.filters;
@@ -95,7 +126,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Lógica de Renderizado ---
     const render = () => {
-        loadData();
         if (currentView === 'list') {
             dom.documentListView.classList.remove('hidden');
             dom.documentEditorView.classList.add('hidden');
@@ -112,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const docInfo = { invoices: { title: "Facturas de Venta" }, chargeAccounts: { title: "Cuentas de Cobro"}, creditNotes: { title: "Notas de Crédito" }, debitNotes: { title: "Notas de Débito" } };
         const currentTitle = docInfo[currentDocumentType]?.title || "Documentos";
         dom.documentListView.innerHTML = `
-            <header class="mb-6 text-center relative"><h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">Gestión de Documentos</h1><p class="text-gray-600 dark:text-gray-400 mt-2">Crea y administra tus documentos comerciales.</p><div class="absolute top-0 right-0 flex items-center h-full"><button id="theme-toggle" title="Cambiar Tema"><div id="theme-toggle-circle"></div></button></div></header>
+            <header class="mb-6 text-center relative"><h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">Gestión de Documentos</h1><p class="text-gray-600 dark:text-gray-400 mt-2">Crea y administra tus documentos comerciales.</p></header>
             <div class="mb-4 border-b border-gray-200 dark:border-gray-700"><nav class="-mb-px flex space-x-4 overflow-x-auto" id="document-type-tabs"><button data-type="invoices" class="tab-btn">Facturas</button><button data-type="chargeAccounts" class="tab-btn">Cuentas de Cobro</button><button data-type="creditNotes" class="tab-btn">Notas Crédito</button><button data-type="debitNotes" class="tab-btn">Notas Débito</button></nav></div>
             <div class="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"><div class="grid grid-cols-1 md:grid-cols-3 gap-4"><input type="text" id="document-search-input" placeholder="Buscar..." class="input md:col-span-1"><div><label class="label-xs">Desde:</label><input type="date" id="start-date-filter" class="input"></div><div><label class="label-xs">Hasta:</label><input type="date" id="end-date-filter" class="input"></div></div></div>
             <div class="flex justify-end items-center gap-2 mb-4"><button id="export-pdf-btn" title="Exportar a PDF" class="btn-icon"><i data-feather="file-text" class="h-5 w-5"></i></button><button id="export-csv-btn" title="Exportar a CSV" class="btn-icon bg-green-600 hover:bg-green-700"><i data-feather="grid" class="h-5 w-5"></i></button><button id="add-document-btn" class="btn-primary"><i data-feather="plus" class="mr-2"></i>Crear ${currentTitle.slice(0, -1)}</button></div>
@@ -197,7 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         document.querySelectorAll('.financial-input').forEach(input => input.addEventListener('input', calculateTotal));
         
-        // --- NUEVO: Lógica para mostrar el NIT/CC del cliente seleccionado ---
         const clientSelect = document.getElementById('client-select');
         const clientIdDisplay = document.getElementById('client-id-display');
         const updateClientIdDisplay = () => {
@@ -209,59 +238,50 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         };
         clientSelect.addEventListener('change', updateClientIdDisplay);
-        if (initialClientId) { updateClientIdDisplay(); } // Muestra el ID al cargar el formulario
+        if (initialClientId) { updateClientIdDisplay(); }
 
         feather.replace();
     };
+    
+    const showClientModal = () => {
+        // Lógica para un futuro modal de creación rápida de clientes
+        showToast('La creación rápida de clientes aún no está implementada.', 'info');
+    };
 
-    const handleSaveDocument = (e) => {
+    const handleSaveDocument = async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
         const data = Object.fromEntries(formData.entries());
-        const docArray = documentosData[currentDocumentType];
-
-        const isDuplicate = docArray.some(doc => 
-            doc.id != editingId &&
-            doc.clientId == data.clientId &&
-            doc.number.toLowerCase() === data.number.toLowerCase()
-        );
-        if (isDuplicate) { return showToast('El número de documento ya existe para este cliente.', 'error'); }
-
-        let newDoc = {
-            id: editingId || Date.now(),
-            number: data.number,
-            clientId: parseInt(data.clientId),
-            clientName: clientsData.find(c => c.id == data.clientId)?.name || 'N/A',
-            issueDate: data.issueDate,
-            total: parseFloat(data.total),
-            attachment: state.tempAttachment || (editingId ? docArray.find(d => d.id == editingId)?.attachment : null)
+        const total = parseFloat(document.getElementById('calculated-total').textContent.replace(/[^0-9,-]+/g,"").replace(',','.'));
+        
+        const newDoc = {
+            id: editingId || undefined, number: data.number,
+            clientId: parseInt(data.clientId), clientName: clientsData.find(c => c.id == data.clientId)?.name || 'N/A',
+            issueDate: data.issueDate, status: data.status, subtotal: parseFloat(data.subtotal) || 0,
+            iva: parseFloat(data.iva) || 0, retefuente: parseFloat(data.retefuente) || 0, ica: parseFloat(data.ica) || 0,
+            issuedBy: data.issuedBy, receivedBy: data.receivedBy, notes: data.notes, total: total
         };
 
-        if (editingId) {
-            const index = docArray.findIndex(d => d.id == editingId);
-            docArray[index] = newDoc;
-            showToast('Documento actualizado.');
-        } else {
-            docArray.push(newDoc);
-            showToast('Documento creado con éxito.');
-        }
-        
-        if (data.sendToCobranza === 'on') {
-            let debtors = JSON.parse(localStorage.getItem('debtors')) || [];
-            debtors = debtors.filter(d => d.documentoId !== newDoc.id);
-            debtors.push({
-                id: Date.now(), documentoId: newDoc.id, clientId: newDoc.clientId,
-                documentType: currentDocumentType === 'invoices' ? 'Factura de Venta' : 'Cuenta de Cobro',
-                invoiceNumber: newDoc.number, totalWithIVA: newDoc.total, balance: newDoc.total,
-                dueDate: newDoc.issueDate, status: 'Pendiente', payments: []
-            });
-            localStorage.setItem('debtors', JSON.stringify(debtors));
-            showToast('Documento enviado a cobranza.', 'info');
-        }
-
-        saveData();
-        currentView = 'list';
-        render();
+        try {
+            if (isUserLoggedIn) {
+                const endpoint = `/api/facturacion/${currentDocumentType}${editingId ? `/${editingId}` : ''}`;
+                const method = editingId ? 'PUT' : 'POST';
+                await api.request(method, endpoint, newDoc);
+            } else {
+                if (editingId) {
+                    const index = documentosData[currentDocumentType].findIndex(d => d.id == editingId);
+                    newDoc.id = Number(editingId);
+                    documentosData[currentDocumentType][index] = newDoc;
+                } else {
+                    newDoc.id = Date.now();
+                    documentosData[currentDocumentType].push(newDoc);
+                }
+                saveLocalData();
+            }
+            showToast('Documento guardado con éxito.');
+            currentView = 'list';
+            render();
+        } catch(e) {}
     };
 
     window.editDocument = (docType, id) => {
@@ -271,53 +291,47 @@ document.addEventListener('DOMContentLoaded', () => {
         render();
     };
     
-    window.deleteDocument = (docType, id) => {
+    window.deleteDocument = async (docType, id) => {
         if (confirm('¿Estás seguro de que quieres eliminar este documento?')) {
-            documentosData[docType] = documentosData[docType].filter(d => d.id != id);
-            saveData();
-            render();
-            showToast('Documento eliminado.');
+            try {
+                if(isUserLoggedIn) {
+                    await api.delete(`/api/facturacion/${docType}/${id}`);
+                } else {
+                    documentosData[docType] = documentosData[docType].filter(d => d.id != id);
+                    saveLocalData();
+                }
+                showToast('Documento eliminado.');
+                render();
+            } catch(e) {}
         }
     };
     
-    // --- Inicialización ---
-    const init = () => {
-        const applyTheme=(theme)=>document.documentElement.classList.toggle('dark',theme==='dark');applyTheme(localStorage.getItem('theme')||'light');
-        document.body.addEventListener('click',e=>{if(e.target.closest('#theme-toggle')){const newTheme=document.documentElement.classList.contains('dark')?'light':'dark';localStorage.setItem('theme',newTheme);applyTheme(newTheme);}});
-        
-        // CORRECCIÓN: Cargar y crear clientes de Facturación
-        let storedClients = JSON.parse(localStorage.getItem('clients')) || [];
-        // Asegurarse de que el cliente "Consumidor Final" exista
-        const consumidorFinalId = 1;
-        if (!storedClients.find(c => c.id === consumidorFinalId)) {
-            storedClients.push({ id: consumidorFinalId, name: 'Consumidor Final', idNumber: 'N/A' });
+    window.duplicateDocument = (docType, id) => {
+        const originalDoc = (documentosData[docType] || []).find(d => d.id == id);
+        if(originalDoc) {
+            prefilledData = {...originalDoc, id: null, number: '', status: 'Borrador', isDuplicate: true};
+            currentDocumentType = docType;
+            editingId = null;
+            currentView = 'editor';
+            render();
         }
-        
-        const crmData = JSON.parse(localStorage.getItem('crm_data_v1')) || { accounts: [] };
-        crmData.accounts.forEach(acc => {
-            if (!storedClients.find(c => c.id === acc.id)) {
-                storedClients.push({ id: acc.id, name: acc.name, idNumber: acc.idNumber });
-            }
-        });
-        clientsData = storedClients;
-        localStorage.setItem('clients', JSON.stringify(clientsData));
+    };
 
-        loadData();
-        
-        // CORRECCIÓN: Procesar factura desde POS al iniciar
-        const invoiceFromPos = localStorage.getItem('invoiceFromPos');
-        if (invoiceFromPos) {
-            prefilledData = JSON.parse(invoiceFromPos);
-            // Asegurarse de que `documentosData` se inicialice antes de agregar la factura
-            if (!documentosData.invoices) documentosData.invoices = [];
-            documentosData.invoices.push(prefilledData);
-            saveData();
-            localStorage.removeItem('invoiceFromPos');
-            currentView = 'list';
-            showToast('Factura del TPV creada con éxito.', 'success');
+    const init = async () => {
+        checkLoginStatus();
+        await loadData();
+
+        // Lógica para pre-llenar desde otros módulos
+        const invoiceFromCrm = localStorage.getItem('invoiceFromCrm');
+        if (invoiceFromCrm) {
+            prefilledData = JSON.parse(invoiceFromCrm);
+            localStorage.removeItem('invoiceFromCrm');
+            currentView = 'editor';
+            currentDocumentType = 'invoices';
+            editingId = null;
         }
 
-        setTimeout(render, 0);
+        render();
     };
     
     init();

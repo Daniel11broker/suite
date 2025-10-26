@@ -4,50 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suite Empresarial - CRM y Ventas</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='rgb(37,99,235)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='2' y='7' width='20' height='15' rx='2' ry='2'></rect><path d='M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16'></path></svg>" type="image/svg+xml">
+    <link rel="icon" href="data:image/svg+xml,...">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/feather-icons"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <link rel="stylesheet" href="main.css">
-    
+    <link rel="stylesheet" href="./sidebar.css">
     <script>
         tailwind.config = { darkMode: 'class' }
     </script>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 transition-colors duration-300">
 
-    <nav id="sidebar" class="fixed top-0 left-0 h-full bg-white dark:bg-gray-800 shadow-lg z-50 flex flex-col transition-all overflow-hidden">
-        <div class="flex items-center justify-center h-16 border-b dark:border-gray-700 flex-shrink-0 px-4">
-            <a href="./inicio.html" class="flex items-center space-x-3">
-                <i data-feather="briefcase" class="h-8 w-8 text-blue-600 flex-shrink-0"></i>
-                <span class="sidebar-text text-xl font-bold text-gray-800 dark:text-white">Suite Empresarial</span>
-            </a>
-        </div>
-        <div class="flex-grow overflow-y-auto overflow-x-hidden">
-            <div class="flex flex-col py-4 space-y-1">
-                 <a href="./inicio.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Inicio">
-                    <i data-feather="home" class="h-6 w-6 flex-shrink-0"></i>
-                    <span class="sidebar-text">Inicio</span>
-                </a>
-                <a href="./resportes.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Reportes"><i data-feather="pie-chart" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Reportes</span></a>
-                <a href="./tesoreria.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Tesorería"><i data-feather="activity" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Tesorería</span></a>
-                <a href="./facturacion.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Facturación"><i data-feather="file-text" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Facturación</span></a>
-                <a href="./recursoshumanos.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="RRHH"><i data-feather="users" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">RRHH</span></a>
-                <a href="./crm.html" class="flex items-center h-12 px-6 text-blue-600 bg-blue-50 dark:bg-gray-700 dark:text-blue-300 font-semibold" title="CRM"><i data-feather="target" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">CRM</span></a>
-                <a href="./compras.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Compras"><i data-feather="shopping-cart" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Compras</span></a>
-                <a href="./nomina.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Nómina"><i data-feather="dollar-sign" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Nómina</span></a>
-                <a href="./cobranza.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Cobranza"><i data-feather="trending-up" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Cobranza</span></a>
-                <a href="./sg-sst.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="SG-SST"><i data-feather="shield" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">SG-SST</span></a>
-                <a href="./inventarios.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Inventarios"><i data-feather="archive" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Inventarios</span></a>
-                <a href="./call-center.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Call Center"><i data-feather="phone" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Call Center</span></a>
-                <a href="./pos.html" class="flex items-center h-12 px-6 text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700" title="Punto de Venta"><i data-feather="shopping-bag" class="h-6 w-6 flex-shrink-0"></i><span class="sidebar-text">Punto de Venta</span></a>
-            </div>
-        </div>
-    </nav>
+    <div id="sidebar-placeholder"></div>
+    <div id="user-session-placeholder"></div>
 
     <button id="mobile-menu-button" class="md:hidden fixed top-4 left-4 z-[60] p-2 bg-white dark:bg-gray-800 rounded-full shadow-md"><i data-feather="menu"></i></button>
 
@@ -56,11 +29,6 @@
             <header class="mb-6 text-center relative">
                 <h1 class="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white">CRM y Gestión de Ventas</h1>
                 <p class="text-gray-600 dark:text-gray-400 mt-2">Gestiona tus prospectos, oportunidades y clientes en un solo lugar.</p>
-                <div class="absolute top-0 right-0 flex items-center h-full">
-                    <button id="theme-toggle" title="Cambiar Tema">
-                        <div id="theme-toggle-circle"></div>
-                    </button>
-                </div>
             </header>
 
             <div class="mb-6 border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
@@ -104,19 +72,36 @@
         </div>
     </div>
     
-    <div id="form-modal" class="modal fixed inset-0 w-full h-full flex items-center justify-center z-50 opacity-0 transform scale-95 pointer-events-none modal-backdrop">
-        <div class="bg-white dark:bg-gray-800 w-11/12 md:max-w-2xl mx-auto rounded-lg shadow-xl z-50">
-            <div class="py-4 text-left px-6">
-                <div class="flex justify-between items-center pb-3 border-b dark:border-gray-700">
-                    <p id="modal-title" class="text-2xl font-bold">Formulario</p>
-                    <button id="close-modal-btn" class="cursor-pointer z-50 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-600"><i data-feather="x"></i></button>
-                </div>
-                <form id="main-form" class="mt-4 max-h-[80vh] overflow-y-auto pr-2"></form>
+    <div id="sidebar-config-modal" class="hidden fixed inset-0 w-full h-full flex items-center justify-center z-[200]" style="background-color: rgba(0,0,0,0.5);">
+    <div class="bg-white dark:bg-gray-800 w-11/12 md:max-w-xl mx-auto rounded-lg shadow-xl z-50">
+        <div class="py-4 text-left px-6">
+            <div class="flex justify-between items-center pb-3 border-b dark:border-gray-700">
+                <p id="sidebar-config-title" class="text-2xl font-bold">Cargando...</p>
+                <button id="sidebar-config-close-btn" class="cursor-pointer z-50 p-1 rounded-full hover:bg-gray-200 dark:hover-bg-gray-700">
+                    <i data-feather="x"></i>
+                </button>
             </div>
+            <form id="sidebar-config-form" class="mt-4 max-h-[80vh] overflow-y-auto pr-2"></form>
         </div>
     </div>
-    <div id="toast-container"></div>
+</div>
+    <div id="toast-container" class="fixed top-20 right-5 z-[1001]"></div>
+    
+<div id="form-modal" class="hidden fixed inset-0 w-full h-full flex items-center justify-center z-50" style="background-color: rgba(0,0,0,0.5);">
+    <div class="bg-white dark:bg-gray-800 w-11/12 md:max-w-2xl mx-auto rounded-lg shadow-xl z-50">
+        <div class="py-4 text-left px-6">
+            <div class="flex justify-between items-center pb-3 border-b dark:border-gray-700">
+                <p id="modal-title" class="text-2xl font-bold">Formulario</p>
+                <button id="close-modal-btn" class="cursor-pointer z-50 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <i data-feather="x"></i>
+                </button>
+            </div>
+            <form id="main-form" class="mt-4 max-h-[80vh] overflow-y-auto pr-2"></form>
+        </div>
+    </div>
+</div>
 
-    <script src="crm.js"></script>
+    <script src="sidebar.js" type="module"></script>
+    <script src="crm.js" type="module"></script>
 </body>
 </html>
